@@ -26,7 +26,7 @@
     "pino-pretty": "^13.1.1"
   },
   "devDependencies": {
-    "@betmate-ap/contracts": "git+https://github.com/betmate-ap/betmate-contracts.git",
+    "@betmate-ap/contracts": "^0.1.1",
     "@types/cookie-parser": "^1.4.9",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
