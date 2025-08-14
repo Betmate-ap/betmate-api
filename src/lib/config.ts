@@ -1,11 +1,11 @@
 type AppConfig = {
-  NODE_ENV: 'development' | 'test' | 'production';
+  NODE_ENV: "development" | "test" | "production";
   PORT: number;
   DATABASE_URL: string;
   JWT_SECRET: string;
   CORS_ORIGIN: string;
-  COOKIE_SECURE: boolean;   // true in prod
-  COOKIE_SAMESITE: 'lax' | 'none';
+  COOKIE_SECURE: boolean; // true in prod
+  COOKIE_SAMESITE: "lax" | "none";
 };
 
 function requireEnv(name: string): string {
@@ -26,19 +26,22 @@ function parseNumber(name: string, fallback: number): number {
   return n;
 }
 
-const NODE_ENV = (process.env.NODE_ENV || 'development') as AppConfig['NODE_ENV'];
+const NODE_ENV = (process.env.NODE_ENV ||
+  "development") as AppConfig["NODE_ENV"];
 
 // Required
-const DATABASE_URL = requireEnv('DATABASE_URL');
-const JWT_SECRET = requireEnv('JWT_SECRET');
+const DATABASE_URL = requireEnv("DATABASE_URL");
+const JWT_SECRET = requireEnv("JWT_SECRET");
 
 // Optional with safe defaults
-const PORT = parseNumber('PORT', 4000);
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
+const PORT = parseNumber("PORT", 4000);
+const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
 
 // Cookies: secure in prod; SameSite "none" only when secure=true (for cross-site)
-const COOKIE_SECURE = NODE_ENV === 'production';
-const COOKIE_SAMESITE: AppConfig['COOKIE_SAMESITE'] = COOKIE_SECURE ? 'none' : 'lax';
+const COOKIE_SECURE = NODE_ENV === "production";
+const COOKIE_SAMESITE: AppConfig["COOKIE_SAMESITE"] = COOKIE_SECURE
+  ? "none"
+  : "lax";
 
 export const config: AppConfig = {
   NODE_ENV,
