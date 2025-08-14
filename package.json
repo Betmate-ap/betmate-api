@@ -7,7 +7,12 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "test": "echo \"no tests yet\" && exit 0"
+    "test": "echo \"no tests yet\" && exit 0",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "type-check": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",
@@ -27,13 +32,17 @@
   },
   "devDependencies": {
     "@betmate-ap/contracts": "^0.1.1",
+    "@eslint/js": "^9.33.0",
     "@types/cookie-parser": "^1.4.9",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.2.1",
+    "eslint": "^9.0.0",
+    "prettier": "^3.6.2",
     "prisma": "^6.14.0",
     "tsx": "^4.20.4",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.39.1"
   }
 }
