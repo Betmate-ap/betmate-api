@@ -8,11 +8,12 @@ import { loadContractsSDL } from "./graphql/loadSchema";
 import { resolvers } from "./graphql/resolvers";
 import { prisma } from "./lib/prisma";
 import { getUserFromToken } from "./lib/auth";
+import { config } from "./lib/config";
 
 export async function createApp() {
   const app = express();
 
-  app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+  app.use(cors({ origin: config.CORS_ORIGIN, credentials: true }));
   app.use(express.json());
   app.use(cookieParser());
 
@@ -26,7 +27,7 @@ export async function createApp() {
       context: async ({ req, res }) => {
         const token = req.cookies?.token as string | undefined;
         const user = getUserFromToken(token);
-        return { req, res, prisma, user };
+        return { req, res, prisma, user, config }; // expose config if resolvers need cookie opts later
       },
     }),
   );
