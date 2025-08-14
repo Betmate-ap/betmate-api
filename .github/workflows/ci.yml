@@ -1,21 +1,17 @@
 name: CI
-
 on:
   pull_request:
     branches: [ main ]
   push:
     branches: [ main ]
-
 jobs:
   ci:
     runs-on: ubuntu-latest
     permissions:
-      contents: read     
-      packages: read      
-
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -23,6 +19,8 @@ jobs:
       - run: npm ci
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+      - run: npm run lint
+      - run: npm run format
+      - run: npm run type-check
       - run: npx prisma generate
       - run: npm run build
