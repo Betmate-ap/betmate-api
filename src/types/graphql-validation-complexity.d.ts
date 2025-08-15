@@ -5,7 +5,7 @@ declare module "graphql-validation-complexity" {
     onCost?: (cost: number) => void;
     formatErrorMessage?: (cost: number) => string;
     createError?: (max: number, actual: number) => Error;
-    estimators?: any[];
+    estimators?: unknown[];
   }
 
   export function createComplexityLimitRule(
