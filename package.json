@@ -16,7 +16,8 @@
     "docker:build": "docker build --build-arg NODE_AUTH_TOKEN= -t betmate-api:dev .",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down -v",
-    "docker:logs": "docker compose logs -f api"
+    "docker:logs": "docker compose logs -f api",
+    "prepare": "husky"
   },
   "keywords": [],
   "author": "",
@@ -40,6 +41,8 @@
   },
   "devDependencies": {
     "@betmate-ap/contracts": "^0.1.1",
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
     "@eslint/js": "^9.33.0",
     "@types/cookie-parser": "^1.4.9",
     "@types/cors": "^2.8.19",
@@ -47,6 +50,8 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.2.1",
     "eslint": "^9.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.5",
     "prettier": "^3.6.2",
     "prisma": "^6.14.0",
     "tsx": "^4.20.4",
