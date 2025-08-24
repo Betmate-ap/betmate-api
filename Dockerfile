@@ -10,8 +10,8 @@ COPY .npmrc .npmrc
 ARG NODE_AUTH_TOKEN
 ENV NODE_AUTH_TOKEN=${NODE_AUTH_TOKEN}
 
-# Install all dependencies
-RUN npm ci --omit=dev && npm cache clean --force
+# Install production dependencies only, disable husky
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
 # ---- Build stage ----
 FROM node:20-alpine AS builder
@@ -22,7 +22,9 @@ COPY package*.json ./
 COPY .npmrc .npmrc
 ARG NODE_AUTH_TOKEN
 ENV NODE_AUTH_TOKEN=${NODE_AUTH_TOKEN}
-RUN npm ci
+
+# Install with more memory-friendly settings
+RUN npm ci --ignore-scripts --maxsockets=1
 
 # Copy source code
 COPY . .
