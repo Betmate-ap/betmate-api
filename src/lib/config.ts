@@ -1,11 +1,12 @@
 type AppConfig = {
-  NODE_ENV: "development" | "test" | "production";
+  NODE_ENV: "development" | "test" | "production" | "staging";
   PORT: number;
   DATABASE_URL: string;
   JWT_SECRET: string;
   CORS_ORIGIN: string;
   COOKIE_SECURE: boolean; // true in prod
   COOKIE_SAMESITE: "lax" | "none";
+  SENTRY_DSN?: string; // optional
 };
 
 function requireEnv(name: string): string {
@@ -38,10 +39,13 @@ const PORT = parseNumber("PORT", 4000);
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
 
 // Cookies: secure in prod; SameSite "none" only when secure=true (for cross-site)
-const COOKIE_SECURE = NODE_ENV === "production";
+const COOKIE_SECURE = NODE_ENV === "production" || NODE_ENV === "staging";
 const COOKIE_SAMESITE: AppConfig["COOKIE_SAMESITE"] = COOKIE_SECURE
   ? "none"
   : "lax";
+
+// Optional Sentry DSN
+const SENTRY_DSN = process.env.SENTRY_DSN;
 
 export const config: AppConfig = {
   NODE_ENV,
@@ -51,4 +55,5 @@ export const config: AppConfig = {
   CORS_ORIGIN,
   COOKIE_SECURE,
   COOKIE_SAMESITE,
+  SENTRY_DSN,
 };

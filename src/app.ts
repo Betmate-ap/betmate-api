@@ -78,6 +78,8 @@ export async function createApp() {
     legacyHeaders: false,
   });
   app.use("/healthz", limiter);
+  app.use("/readyz", limiter);
+  app.use("/livez", limiter);
   app.use("/graphql", limiter);
 
   // ----- Apollo / GraphQL -----
@@ -153,6 +155,24 @@ export async function createApp() {
     }),
   );
 
+  // Health endpoints
   app.get("/healthz", (_req, res) => res.send("ok"));
+
+  // Readiness: check database connection
+  app.get("/readyz", async (_req, res) => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      res.status(200).send("ready");
+    } catch (error) {
+      logger.error(error, "readiness check failed");
+      res.status(503).send("not ready");
+    }
+  });
+
+  // Liveness: basic app health (should be lightweight)
+  app.get("/livez", (_req, res) => {
+    res.status(200).send("alive");
+  });
+
   return app;
 }
