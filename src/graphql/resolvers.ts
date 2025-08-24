@@ -1,20 +1,29 @@
+import { PrismaClient } from "@prisma/client";
+
+type Context = {
+  user?: { userId: number } | null;
+  prisma: PrismaClient;
+};
+
 export const resolvers = {
   Query: {
     health: () => "ok",
-    // TEMP STUB: replace with Prisma after we add models
-    me: (
-      _: unknown,
-      __: unknown,
-      ctx: { user?: { userId: number } | null },
-    ) => {
+    me: async (_: unknown, __: unknown, ctx: Context) => {
       if (!ctx.user) return null;
-      // Return a placeholder shape that matches the contract.
-      // After Prisma models, we’ll fetch from the DB.
+
+      const user = await ctx.prisma.user.findUnique({
+        where: { id: ctx.user.userId },
+      });
+
+      if (!user) return null;
+
       return {
-        id: ctx.user.userId,
-        username: "placeholder",
-        firstName: "Demo",
-        lastName: "User",
+        id: user.id,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        createdAt: user.createdAt.toISOString(),
       };
     },
   },

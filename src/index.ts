@@ -1,3 +1,7 @@
+// Initialize Sentry first (before any other imports)
+import { initSentry } from "./lib/sentry";
+initSentry();
+
 import { createApp } from "./app";
 import { logger } from "./lib/logger";
 
