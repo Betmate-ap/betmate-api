@@ -17,10 +17,15 @@ jobs:
         run: npm install -g @railway/cli
 
       - name: Deploy to Railway (Staging)
-        run: railway up --service betmate-api-staging
+        run: |
+          echo "Authenticating with Railway..."
+          railway login
+          echo "Linking to project..."
+          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
+          echo "Deploying service..."
+          railway up --service betmate-api-staging
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
           NODE_ENV: staging
           DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
           JWT_SECRET: ${{ secrets.STAGING_JWT_SECRET }}
