@@ -21,7 +21,10 @@ jobs:
         run: npm install -g @railway/cli
 
       - name: Deploy to Railway (Production)
-        run: railway up --service betmate-api-production
+        run: |
+          railway login --token ${{ secrets.RAILWAY_TOKEN }}
+          railway link --project ${{ secrets.RAILWAY_PRODUCTION_PROJECT_ID }}
+          railway up --service betmate-api-production
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           NODE_ENV: production
