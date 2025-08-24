@@ -13,12 +13,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
       - name: Deploy to Railway (Staging)
-        uses: railwayapp/railway-deploy@v3
-        with:
-          railway-token: ${{ secrets.RAILWAY_TOKEN }}
-          service: betmate-api-staging
+        run: railway up --service betmate-api-staging
         env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           NODE_ENV: staging
           DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
           JWT_SECRET: ${{ secrets.STAGING_JWT_SECRET }}
