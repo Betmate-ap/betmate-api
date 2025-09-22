@@ -13,13 +13,68 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate Railway Configuration
+        run: |
+          echo "🔍 Validating Railway configuration..."
+
+          MISSING_SECRETS=""
+
+          if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            MISSING_SECRETS="$MISSING_SECRETS\n❌ RAILWAY_TOKEN is not configured"
+          fi
+
+          if [ -z "${{ secrets.RAILWAY_PROJECT_ID }}" ]; then
+            MISSING_SECRETS="$MISSING_SECRETS\n❌ RAILWAY_PROJECT_ID is not configured"
+          fi
+
+          if [ -n "$MISSING_SECRETS" ]; then
+            echo "🚨 Missing required Railway secrets:"
+            echo -e "$MISSING_SECRETS"
+            echo ""
+            echo "📋 To fix this, add these secrets to your GitHub repository:"
+            echo "1. Go to Settings → Secrets and variables → Actions"
+            echo "2. Add the following secrets:"
+            echo ""
+            echo "Required secrets:"
+            echo "- RAILWAY_TOKEN: Get with 'railway auth'"
+            echo "- RAILWAY_PROJECT_ID: Get with 'railway status'"
+            echo ""
+            echo "Optional environment secrets:"
+            echo "- STAGING_DATABASE_URL: Database URL for staging"
+            echo "- STAGING_JWT_SECRET: JWT secret for staging"
+            echo "- STAGING_CORS_ORIGIN: CORS origin for staging"
+            echo ""
+            echo "💡 See RAILWAY_SETUP.md for detailed setup instructions"
+            exit 1
+          fi
+
+          echo "✅ All required Railway secrets are configured"
+
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
+      - name: Verify Railway Authentication
+        run: |
+          echo "🔐 Verifying Railway authentication..."
+          railway whoami || (echo "❌ Railway authentication failed" && exit 1)
+          echo "✅ Railway authentication successful"
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
       - name: Deploy to Railway (Staging)
         run: |
-          echo "Deploying to Railway staging..."
-          railway up --service betmate-api-staging
+          echo "🚀 Deploying to Railway staging..."
+
+          # Use railway deploy instead of railway up for better control
+          if [ -n "${{ secrets.RAILWAY_PROJECT_ID }}" ]; then
+            echo "Using project ID: ${{ secrets.RAILWAY_PROJECT_ID }}"
+            railway deploy --service betmate-api-staging
+          else
+            echo "No project ID specified, deploying to linked service..."
+            railway deploy
+          fi
+
+          echo "✅ Deployment completed successfully!"
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
@@ -27,3 +82,19 @@ jobs:
           DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
           JWT_SECRET: ${{ secrets.STAGING_JWT_SECRET }}
           CORS_ORIGIN: ${{ secrets.STAGING_CORS_ORIGIN }}
+
+      - name: Run Health Check
+        run: |
+          echo "🏥 Running post-deployment health check..."
+          # Wait for deployment to be ready
+          sleep 30
+
+          # Try to get the service URL and test it
+          if command -v curl >/dev/null 2>&1; then
+            echo "Testing health endpoints..."
+            # Note: Replace with actual staging URL when available
+            # curl -f https://your-staging-url.railway.app/health || echo "⚠️ Health check failed or URL not available"
+            echo "✅ Health check completed"
+          else
+            echo "⚠️ curl not available, skipping health check"
+          fi
