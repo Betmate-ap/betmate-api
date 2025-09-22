@@ -9,7 +9,8 @@
     "sleepApplication": false,
     "restartPolicyType": "ON_FAILURE",
     "healthcheckPath": "/health",
-    "healthcheckTimeout": 300
+    "healthcheckTimeout": 300,
+    "startCommand": "npm run start"
   },
   "environments": {
     "staging": {

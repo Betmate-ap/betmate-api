@@ -23,8 +23,9 @@ jobs:
             MISSING_SECRETS="$MISSING_SECRETS\n❌ RAILWAY_TOKEN is not configured"
           fi
 
+          # PROJECT_ID is optional when using service name
           if [ -z "${{ secrets.RAILWAY_PROJECT_ID }}" ]; then
-            MISSING_SECRETS="$MISSING_SECRETS\n❌ RAILWAY_PROJECT_ID is not configured"
+            echo "⚠️ RAILWAY_PROJECT_ID not configured (will use service name instead)"
           fi
 
           if [ -n "$MISSING_SECRETS" ]; then
@@ -58,14 +59,9 @@ jobs:
           echo "🚀 Deploying to Railway staging..."
           echo "🔐 Using Railway token for authentication..."
 
-          # Deploy using railway up which works better with tokens
-          if [ -n "${{ secrets.RAILWAY_PROJECT_ID }}" ]; then
-            echo "Using project ID: ${{ secrets.RAILWAY_PROJECT_ID }}"
-            railway up --service betmate-api-staging
-          else
-            echo "No project ID specified, deploying to linked service..."
-            railway up
-          fi
+          # Deploy to the staging service
+          echo "Deploying to service: betmate-api-staging"
+          railway up --service betmate-api-staging
 
           echo "✅ Deployment completed successfully!"
         env:
