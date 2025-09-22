@@ -26,13 +26,16 @@ This will open a browser window for authentication.
 
 ### 3. Get Your Railway Token
 
-After logging in, get your Railway token:
+Get your Railway token from the dashboard:
 
+1. Go to https://railway.app/account/tokens
+2. Create a new token
+3. Copy the token - you'll need this for GitHub secrets
+
+Or use CLI:
 ```bash
-railway auth
+railway login --token
 ```
-
-Copy the token that appears - you'll need this for GitHub secrets.
 
 ### 4. Link Your Project to Railway
 
@@ -70,8 +73,12 @@ Go to your GitHub repository settings and add these secrets:
 
 | Secret Name | Description | How to Get |
 |-------------|-------------|------------|
-| `RAILWAY_TOKEN` | Your Railway API token | Run `railway auth` |
-| `RAILWAY_SERVICE_ID` | Your Railway service ID | Run `railway status` |
+| `RAILWAY_TOKEN` | Your Railway API token | Get from https://railway.app/account/tokens |
+
+#### Optional Secrets
+| Secret Name | Description | How to Get |
+|-------------|-------------|------------|
+| `RAILWAY_PROJECT_ID` | Your Railway project ID | Run `railway status` (optional - we use service name) |
 | `STAGING_URL` | Your staging environment URL | From Railway dashboard |
 | `PRODUCTION_URL` | Your production environment URL | From Railway dashboard |
 
