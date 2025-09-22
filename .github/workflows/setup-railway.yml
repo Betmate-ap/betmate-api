@@ -1,0 +1,99 @@
+name: Setup Railway Configuration
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to set up (staging or production)'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  setup:
+    name: Setup Railway for ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check Required Secrets
+        run: |
+          echo "🔍 Checking Railway configuration for ${{ inputs.environment }}..."
+
+          MISSING_SECRETS=""
+
+          if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            MISSING_SECRETS="$MISSING_SECRETS\n- RAILWAY_TOKEN"
+          fi
+
+          if [ -z "${{ secrets.RAILWAY_SERVICE_ID }}" ]; then
+            MISSING_SECRETS="$MISSING_SECRETS\n- RAILWAY_SERVICE_ID"
+          fi
+
+          if [ "${{ inputs.environment }}" == "staging" ] && [ -z "${{ secrets.STAGING_URL }}" ]; then
+            MISSING_SECRETS="$MISSING_SECRETS\n- STAGING_URL"
+          fi
+
+          if [ "${{ inputs.environment }}" == "production" ] && [ -z "${{ secrets.PRODUCTION_URL }}" ]; then
+            MISSING_SECRETS="$MISSING_SECRETS\n- PRODUCTION_URL"
+          fi
+
+          if [ -n "$MISSING_SECRETS" ]; then
+            echo "❌ Missing required secrets:"
+            echo -e "$MISSING_SECRETS"
+            echo ""
+            echo "📋 To fix this:"
+            echo "1. Go to Settings → Secrets and variables → Actions"
+            echo "2. Add the missing secrets"
+            echo ""
+            echo "🔧 How to get the values:"
+            echo "- RAILWAY_TOKEN: Run 'railway auth'"
+            echo "- RAILWAY_SERVICE_ID: Run 'railway status'"
+            echo "- STAGING_URL/PRODUCTION_URL: Check Railway dashboard"
+            exit 1
+          fi
+
+          echo "✅ All required secrets are configured!"
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Test Railway Connection
+        run: |
+          echo "🔌 Testing Railway connection..."
+          railway whoami
+          echo "✅ Railway connection successful!"
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Verify Service Access
+        run: |
+          echo "🔍 Verifying service access..."
+          railway status --service ${{ secrets.RAILWAY_SERVICE_ID }}
+          echo "✅ Service access verified!"
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Check Environment
+        run: |
+          echo "🌍 Checking ${{ inputs.environment }} environment..."
+          railway environment list --service ${{ secrets.RAILWAY_SERVICE_ID }}
+          echo "✅ Environment check complete!"
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Setup Complete
+        run: |
+          echo "🎉 Railway setup complete for ${{ inputs.environment }}!"
+          echo ""
+          echo "✅ You can now:"
+          echo "- Push to 'develop' branch for staging deployment"
+          echo "- Push to 'main' branch for production deployment"
+          echo "- Run manual deployments with npm scripts"
+          echo ""
+          echo "📊 Monitor deployments at: https://railway.app"

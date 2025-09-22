@@ -14,6 +14,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Check Railway Configuration
+        run: |
+          if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "❌ RAILWAY_TOKEN secret is not configured"
+            echo "Please add the following secrets to your GitHub repository:"
+            echo "1. RAILWAY_TOKEN - Your Railway API token"
+            echo "2. RAILWAY_SERVICE_ID - Your Railway service ID"
+            echo "3. STAGING_URL - Your staging environment URL"
+            echo ""
+            echo "To get your Railway token, run: railway auth"
+            echo "To get your service ID, run: railway status"
+            exit 1
+          fi
+          echo "✅ Railway secrets are configured"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -32,9 +47,24 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
+      - name: Verify Railway Authentication
+        run: |
+          echo "Verifying Railway authentication..."
+          railway whoami || (echo "❌ Railway authentication failed" && exit 1)
+          echo "✅ Railway authentication successful"
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
       - name: Deploy to Railway Staging
         working-directory: ./betmate-api
-        run: railway deploy --service ${{ secrets.RAILWAY_SERVICE_ID }} --environment staging
+        run: |
+          echo "🚀 Deploying to Railway staging environment..."
+          if [ -n "${{ secrets.RAILWAY_SERVICE_ID }}" ]; then
+            railway deploy --service ${{ secrets.RAILWAY_SERVICE_ID }} --environment staging
+          else
+            echo "⚠️ No service ID specified, deploying to linked service..."
+            railway deploy --environment staging
+          fi
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
