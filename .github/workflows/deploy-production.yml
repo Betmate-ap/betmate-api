@@ -40,7 +40,7 @@ jobs:
             echo "2. Add the following secrets:"
             echo ""
             echo "Required secrets:"
-            echo "- RAILWAY_TOKEN: Get with 'railway auth'"
+            echo "- RAILWAY_TOKEN: Get from Railway Dashboard (https://railway.app/account/tokens)"
             echo ""
             echo "Optional secrets:"
             echo "- RAILWAY_PRODUCTION_PROJECT_ID: Get with 'railway status'"
