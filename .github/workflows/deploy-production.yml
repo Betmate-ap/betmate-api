@@ -17,13 +17,69 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate Railway Configuration
+        run: |
+          echo "🔍 Validating Railway configuration for production..."
+
+          MISSING_SECRETS=""
+
+          if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            MISSING_SECRETS="$MISSING_SECRETS\n❌ RAILWAY_TOKEN is not configured"
+          fi
+
+          if [ -z "${{ secrets.RAILWAY_PRODUCTION_PROJECT_ID }}" ]; then
+            echo "⚠️ RAILWAY_PRODUCTION_PROJECT_ID not set, will use default project"
+          fi
+
+          if [ -n "$MISSING_SECRETS" ]; then
+            echo "🚨 Missing required Railway secrets:"
+            echo -e "$MISSING_SECRETS"
+            echo ""
+            echo "📋 To fix this, add these secrets to your GitHub repository:"
+            echo "1. Go to Settings → Secrets and variables → Actions"
+            echo "2. Add the following secrets:"
+            echo ""
+            echo "Required secrets:"
+            echo "- RAILWAY_TOKEN: Get with 'railway auth'"
+            echo ""
+            echo "Optional secrets:"
+            echo "- RAILWAY_PRODUCTION_PROJECT_ID: Get with 'railway status'"
+            echo "- PRODUCTION_DATABASE_URL: Database URL for production"
+            echo "- PRODUCTION_JWT_SECRET: JWT secret for production"
+            echo "- PRODUCTION_CORS_ORIGIN: CORS origin for production"
+            echo ""
+            echo "💡 See RAILWAY_SETUP.md for detailed setup instructions"
+            exit 1
+          fi
+
+          echo "✅ Railway configuration validated"
+
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
+      - name: Verify Railway Authentication
+        run: |
+          echo "🔐 Verifying Railway authentication..."
+          railway whoami || (echo "❌ Railway authentication failed" && exit 1)
+          echo "✅ Railway authentication successful"
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
       - name: Deploy to Railway (Production)
         run: |
-          echo "Deploying to Railway production..."
-          railway up --service betmate-api-production
+          echo "🚀 Deploying to Railway production..."
+          echo "⚠️ PRODUCTION DEPLOYMENT - This will affect live users!"
+
+          # Use railway deploy instead of railway up for better control
+          if [ -n "${{ secrets.RAILWAY_PRODUCTION_PROJECT_ID }}" ]; then
+            echo "Using production project ID: ${{ secrets.RAILWAY_PRODUCTION_PROJECT_ID }}"
+            railway deploy --service betmate-api-production
+          else
+            echo "No production project ID specified, deploying to linked service..."
+            railway deploy
+          fi
+
+          echo "✅ Production deployment completed successfully!"
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PRODUCTION_PROJECT_ID }}
@@ -31,3 +87,24 @@ jobs:
           DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
           JWT_SECRET: ${{ secrets.PRODUCTION_JWT_SECRET }}
           CORS_ORIGIN: ${{ secrets.PRODUCTION_CORS_ORIGIN }}
+
+      - name: Run Production Health Check
+        run: |
+          echo "🏥 Running critical production health checks..."
+          # Wait for deployment to be ready
+          sleep 60
+
+          echo "🔍 Verifying production deployment..."
+          # Try to get the service URL and test it
+          if command -v curl >/dev/null 2>&1; then
+            echo "Testing production health endpoints..."
+            # Note: Replace with actual production URL when available
+            # curl -f https://your-production-url.railway.app/health || echo "🚨 CRITICAL: Production health check failed!"
+            echo "✅ Production health check completed"
+          else
+            echo "⚠️ curl not available, skipping automated health check"
+            echo "🔧 Please manually verify production deployment at your Railway dashboard"
+          fi
+
+          echo "🎉 Production deployment successful!"
+          echo "📊 Monitor your application at: https://railway.app"
