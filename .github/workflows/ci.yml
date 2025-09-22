@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: betmate_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: betmate-api/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./betmate-api
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: ./betmate-api
+        run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/betmate_test
+
+      - name: Run database migrations
+        working-directory: ./betmate-api
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/betmate_test
+
+      - name: Type check
+        working-directory: ./betmate-api
+        run: npm run type-check
+
+      - name: Lint
+        working-directory: ./betmate-api
+        run: npm run lint
+
+      - name: Format check
+        working-directory: ./betmate-api
+        run: npm run format
+
+      - name: Build
+        working-directory: ./betmate-api
+        run: npm run build
+
+      - name: Test
+        working-directory: ./betmate-api
+        run: npm test
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/betmate_test
+          NODE_ENV: test
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: betmate-api/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./betmate-api
+        run: npm ci
+
+      - name: Run security audit
+        working-directory: ./betmate-api
+        run: npm audit --audit-level high
+
+      - name: Check for vulnerable dependencies
+        working-directory: ./betmate-api
+        run: npx audit-ci --high
