@@ -56,5 +56,5 @@ USER nextjs
 
 EXPOSE 4000
 
-# Apply DB migrations at container start, then run the app
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+# Use npm start to run prestart hooks and the app
+CMD ["npm", "run", "start"]
