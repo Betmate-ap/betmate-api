@@ -51,10 +51,10 @@
     "pino": "^9.8.0",
     "pino-http": "^10.5.0",
     "pino-pretty": "^13.1.1",
-    "prisma": "^6.14.0"
+    "prisma": "^6.14.0",
+    "@betmate-ap/contracts": "^0.1.1"
   },
   "devDependencies": {
-    "@betmate-ap/contracts": "^0.1.1",
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
     "@eslint/js": "^9.33.0",
