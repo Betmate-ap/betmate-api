@@ -59,11 +59,9 @@ jobs:
           echo "🚀 Deploying to Railway staging..."
           echo "🔐 Using Railway token for authentication..."
 
-          # Link to the project first
           echo "Linking to Railway project: fearless-serenity"
           railway link fearless-serenity --environment production
 
-          # Deploy to the staging service
           echo "Deploying to service: betmate-api-staging"
           railway up --service betmate-api-staging
 
