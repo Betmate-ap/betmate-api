@@ -13,7 +13,17 @@ fi
 
 # Authenticate with Railway (if not already authenticated)
 if ! railway whoami &> /dev/null; then
-    echo "❌ Not authenticated with Railway. Please run 'railway login' first."
+    echo "❌ Not authenticated with Railway."
+    echo ""
+    echo "To set up Railway authentication:"
+    echo "1. Run: railway login"
+    echo "2. Follow the browser authentication flow"
+    echo "3. Re-run this script"
+    echo ""
+    echo "For GitHub Actions, ensure these secrets are set:"
+    echo "- RAILWAY_TOKEN (get with: railway auth)"
+    echo "- RAILWAY_SERVICE_ID (get with: railway status)"
+    echo "- PRODUCTION_URL (from Railway dashboard)"
     exit 1
 fi
 
