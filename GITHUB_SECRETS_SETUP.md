@@ -35,11 +35,19 @@ Your deployment is failing because GitHub secrets are not configured. You need t
 
    This will open a browser window for authentication.
 
-3. **Get your token:**
+3. **Get your token from Railway Dashboard:**
+   - Go to [Railway Dashboard → Account → Tokens](https://railway.app/account/tokens)
+   - Click "Create New Token"
+   - Give it a name like "GitHub Actions"
+   - **Copy the token that appears** - you'll need this for GitHub
+
+   **Alternative method (browserless):**
+
    ```bash
-   railway auth
+   railway login --browserless
    ```
-   **Copy the token that appears** - you'll need this for GitHub.
+
+   This will give you a token directly in the terminal.
 
 ### Step 2: Get Your Project ID (Optional)
 
@@ -133,9 +141,13 @@ npm run deploy:production
 
 **Required Actions:**
 
-1. Run `railway auth` → Copy token
-2. Go to GitHub repo → Settings → Secrets and variables → Actions
-3. Add `RAILWAY_TOKEN` secret with the copied token
-4. Re-run your GitHub Action
+1. **Get Railway token:**
+   - Go to [Railway Dashboard → Tokens](https://railway.app/account/tokens)
+   - Create new token → Copy it
+   - OR run `railway login --browserless` → Copy token
+2. **Add to GitHub:**
+   - Go to GitHub repo → Settings → Secrets and variables → Actions
+   - Add `RAILWAY_TOKEN` secret with the copied token
+3. **Re-run your GitHub Action**
 
 That's it! Your deployments should now work. 🚀
