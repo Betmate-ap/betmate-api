@@ -18,6 +18,8 @@ jobs:
 
       - name: Deploy to Railway (Staging)
         run: |
+          echo "Linking to Railway project..."
+          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
           echo "Deploying to Railway staging..."
           railway up --service betmate-api-staging
         env:
