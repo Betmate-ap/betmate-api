@@ -48,6 +48,11 @@ Your deployment is failing because GitHub secrets are not configured. You need t
    ```
 
    This will give you a token directly in the terminal.
+3. **Get your token:**
+   ```bash
+   railway auth
+   ```
+   **Copy the token that appears** - you'll need this for GitHub.
 
 ### Step 2: Get Your Project ID (Optional)
 
@@ -149,5 +154,9 @@ npm run deploy:production
    - Go to GitHub repo → Settings → Secrets and variables → Actions
    - Add `RAILWAY_TOKEN` secret with the copied token
 3. **Re-run your GitHub Action**
+1. Run `railway auth` → Copy token
+2. Go to GitHub repo → Settings → Secrets and variables → Actions
+3. Add `RAILWAY_TOKEN` secret with the copied token
+4. Re-run your GitHub Action
 
 That's it! Your deployments should now work. 🚀

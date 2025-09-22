@@ -37,6 +37,7 @@ If you're seeing "Project Token not found" errors, you need to configure Railway
    ```bash
    # Get token from Railway Dashboard: https://railway.app/account/tokens
    # OR use browserless login: railway login --browserless
+   railway auth
    ```
 
 2. **Add to GitHub:**
