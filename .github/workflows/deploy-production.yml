@@ -57,26 +57,19 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      - name: Verify Railway Authentication
-        run: |
-          echo "🔐 Verifying Railway authentication..."
-          railway whoami || (echo "❌ Railway authentication failed" && exit 1)
-          echo "✅ Railway authentication successful"
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
       - name: Deploy to Railway (Production)
         run: |
           echo "🚀 Deploying to Railway production..."
           echo "⚠️ PRODUCTION DEPLOYMENT - This will affect live users!"
+          echo "🔐 Using Railway token for authentication..."
 
-          # Use railway deploy instead of railway up for better control
+          # Deploy using railway up which works better with tokens
           if [ -n "${{ secrets.RAILWAY_PRODUCTION_PROJECT_ID }}" ]; then
             echo "Using production project ID: ${{ secrets.RAILWAY_PRODUCTION_PROJECT_ID }}"
-            railway deploy --service betmate-api-production
+            railway up --service betmate-api-production
           else
             echo "No production project ID specified, deploying to linked service..."
-            railway deploy
+            railway up
           fi
 
           echo "✅ Production deployment completed successfully!"
