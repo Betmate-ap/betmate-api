@@ -156,16 +156,65 @@ export async function createApp() {
   );
 
   // Health endpoints
+  app.get("/health", (_req, res) => res.send("ok"));
   app.get("/healthz", (_req, res) => res.send("ok"));
 
   // Readiness: check database connection
   app.get("/readyz", async (_req, res) => {
     try {
       await prisma.$queryRaw`SELECT 1`;
-      res.status(200).send("ready");
+      res.status(200).json({
+        status: "ready",
+        timestamp: new Date().toISOString(),
+        checks: {
+          database: "ok",
+        },
+      });
     } catch (error) {
       logger.error(error, "readiness check failed");
-      res.status(503).send("not ready");
+      res.status(503).json({
+        status: "not ready",
+        timestamp: new Date().toISOString(),
+        checks: {
+          database: "error",
+        },
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
+  // Enhanced health check with metrics
+  app.get("/health/detailed", async (_req, res) => {
+    try {
+      const { HealthChecker, monitor } = await import("./lib/monitoring");
+
+      const [dbHealth, memoryHealth] = await Promise.all([
+        HealthChecker.checkDatabase(),
+        HealthChecker.checkMemoryUsage(),
+      ]);
+
+      const systemInfo = HealthChecker.getSystemInfo();
+      const metrics = monitor.getMetrics();
+
+      const overallHealthy = dbHealth.healthy && memoryHealth.healthy;
+
+      res.status(overallHealthy ? 200 : 503).json({
+        status: overallHealthy ? "healthy" : "unhealthy",
+        timestamp: new Date().toISOString(),
+        checks: {
+          database: dbHealth,
+          memory: memoryHealth,
+          system: systemInfo,
+        },
+        metrics: Object.keys(metrics).length > 0 ? metrics : undefined,
+      });
+    } catch (error) {
+      logger.error(error, "detailed health check failed");
+      res.status(500).json({
+        status: "error",
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   });
 
