@@ -22,8 +22,6 @@ jobs:
 
       - name: Deploy to Railway (Production)
         run: |
-          echo "Linking to Railway project..."
-          railway link ${{ secrets.RAILWAY_PRODUCTION_PROJECT_ID }}
           echo "Deploying to Railway production..."
           railway up --service betmate-api-production
         env:
