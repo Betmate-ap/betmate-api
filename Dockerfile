@@ -32,8 +32,8 @@ COPY . .
 # Generate Prisma client and build
 RUN npx prisma generate && npm run build
 
-# ---- Production stage ----
-FROM node:20-alpine AS production
+# ---- Runtime stage ----
+FROM node:20-alpine AS runtime
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs \
