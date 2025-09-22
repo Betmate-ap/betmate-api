@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(/D:\\OneDrive\\Pictures\\Screenshots/**)",
+      "Read(/D:\\OneDrive\\Pictures\\Screenshots/**)",
+      "Read(/D:\\OneDrive\\Pictures\\Screenshots/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
