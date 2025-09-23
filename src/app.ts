@@ -17,11 +17,10 @@ import {
   type DocumentNode,
 } from "graphql";
 import { createComplexityLimitRule } from "graphql-validation-complexity";
-
 import { loadContractsSDL } from "./graphql/loadSchema";
 import { resolvers } from "./graphql/resolvers";
 import { prisma } from "./lib/prisma";
-import { getUserFromToken } from "./lib/auth";
+import { getUserFromToken, extractTokenFromRequest } from "./lib/auth";
 import { logger } from "./lib/logger";
 import { config } from "./lib/config";
 
@@ -106,7 +105,6 @@ export async function createApp() {
   // Validation rule that *skips* complexity for introspection
   const skipOnIntrospection: ValidationRule = (context) => {
     if (isIntrospectionOp(context.getDocument())) {
-      // Return a no‑op visitor (never `undefined`) to keep the validator happy
       return {} as unknown as ASTVisitor;
     }
     // Delegate to the real complexity rule
@@ -116,15 +114,11 @@ export async function createApp() {
   const apollo = new ApolloServer({
     typeDefs,
     resolvers,
-    // Industry standard: on in dev, off in prod
     introspection: !isProd,
-    // Only show landing page locally
     plugins: isProd
       ? []
       : [ApolloServerPluginLandingPageLocalDefault({ embed: true })],
-    // Keep complexity protection but allow tooling to introspect
     validationRules: [skipOnIntrospection],
-    // Redact internal errors in prod; always log full details
     formatError(formattedErr, rawErr) {
       logger.error({ err: rawErr }, "graphql error");
 
@@ -148,9 +142,9 @@ export async function createApp() {
     "/graphql",
     expressMiddleware(apollo, {
       context: async ({ req, res }) => {
-        const token = req.cookies?.token as string | undefined;
+        const token = extractTokenFromRequest(req);
         const user = getUserFromToken(token);
-        return { req, res, prisma, user, config };
+        return { req, res, prisma, user };
       },
     }),
   );
