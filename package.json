@@ -34,6 +34,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@betmate-ap/contracts": "git+https://github.com/Betmate-ap/betmate-contracts.git#main",
     "@apollo/server": "^5.0.0",
     "@as-integrations/express5": "^1.1.2",
     "@prisma/client": "^6.14.0",
