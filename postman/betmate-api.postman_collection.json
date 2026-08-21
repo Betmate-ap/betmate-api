@@ -191,9 +191,7 @@
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "graphql",
               "graphql": {
@@ -241,9 +239,7 @@
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "graphql",
               "graphql": {
@@ -289,9 +285,7 @@
           "name": "Me (Authenticated)",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "graphql",
               "graphql": {
@@ -332,7 +326,11 @@
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "Cookie", "value": "refreshToken={{refreshToken}}", "description": "Manually set cookie — Postman does not auto-send cookies from Set-Cookie headers in the same way browsers do. Replace with the actual refreshToken value if needed." }
+              {
+                "key": "Cookie",
+                "value": "refreshToken={{refreshToken}}",
+                "description": "Manually set cookie — Postman does not auto-send cookies from Set-Cookie headers in the same way browsers do. Replace with the actual refreshToken value if needed."
+              }
             ],
             "body": {
               "mode": "graphql",
@@ -418,9 +416,7 @@
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "graphql",
               "graphql": {

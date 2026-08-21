@@ -92,26 +92,26 @@ npm run db:migrate:deploy    # Apply pending migrations (non-interactive, used i
 
 Copy `.env.example` to `.env`. For local dev the defaults work out of the box with `docker compose up db -d`.
 
-| Variable | Required | Description |
-|---|---|---|
-| `DATABASE_URL` | Yes | PostgreSQL connection string |
-| `JWT_SECRET` | Yes | Secret for signing JWT tokens |
-| `PORT` | No | Server port (default: 4000) |
-| `NODE_ENV` | No | `development` / `staging` / `production` |
-| `CORS_ORIGIN` | No | Allowed frontend origin (default: `http://localhost:5173`) |
-| `SENTRY_DSN` | No | Sentry error tracking DSN |
+| Variable       | Required | Description                                                |
+| -------------- | -------- | ---------------------------------------------------------- |
+| `DATABASE_URL` | Yes      | PostgreSQL connection string                               |
+| `JWT_SECRET`   | Yes      | Secret for signing JWT tokens                              |
+| `PORT`         | No       | Server port (default: 4000)                                |
+| `NODE_ENV`     | No       | `development` / `staging` / `production`                   |
+| `CORS_ORIGIN`  | No       | Allowed frontend origin (default: `http://localhost:5173`) |
+| `SENTRY_DSN`   | No       | Sentry error tracking DSN                                  |
 
 ---
 
 ## Health Endpoints
 
-| Endpoint | Description |
-|---|---|
-| `GET /health` | Returns `ok` |
-| `GET /healthz` | Returns `ok` (Railway probe) |
-| `GET /livez` | Returns `alive` |
-| `GET /readyz` | Checks database connection — 200 ready / 503 not ready |
-| `GET /health/detailed` | DB status, memory usage, system info |
+| Endpoint               | Description                                            |
+| ---------------------- | ------------------------------------------------------ |
+| `GET /health`          | Returns `ok`                                           |
+| `GET /healthz`         | Returns `ok` (Railway probe)                           |
+| `GET /livez`           | Returns `alive`                                        |
+| `GET /readyz`          | Checks database connection — 200 ready / 503 not ready |
+| `GET /health/detailed` | DB status, memory usage, system info                   |
 
 ---
 
