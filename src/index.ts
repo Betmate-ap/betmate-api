@@ -14,6 +14,11 @@ createApp()
     );
   })
   .catch((err) => {
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : "";
+    process.stderr.write(
+      `\n[FATAL] Failed to start server: ${message}\n${stack}\n\n`,
+    );
     logger.error(err, "Failed to start server");
     process.exit(1);
   });
