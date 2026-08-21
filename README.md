@@ -1,199 +1,154 @@
-# Betmate API
+# BetMate API
 
-GraphQL API server for the Betmate platform with Railway deployment support.
+GraphQL API for the BetMate platform — Express v5 + Apollo Server v5 + Prisma v6 + PostgreSQL, deployed on Railway.
 
-## 🚀 Quick Start
+---
 
-### Development Setup
+## Local Development
 
-1. **Install dependencies:**
+### Prerequisites (one-time)
 
-   ```bash
-   npm install
-   ```
+- [Node.js](https://nodejs.org) (v20+)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop) (for the local PostgreSQL container)
 
-2. **Setup environment:**
+### First-time setup after cloning
 
-   ```bash
-   cp .env.template .env
-   # Edit .env with your configuration
-   ```
+```bash
+# 1. Install dependencies
+npm install
 
-3. **Start development server:**
-   ```bash
-   npm run dev
-   ```
+# 2. Create your local env file (credentials already match docker-compose — no edits needed)
+cp .env.example .env
 
-The API will be available at `http://localhost:4000/graphql`
+# 3. Start the database container
+docker compose up db -d
 
-## 🚨 Railway Deployment Setup
+# 4. Generate Prisma client and run migrations
+npm run dev:setup
 
-If you're seeing "Project Token not found" errors, you need to configure Railway secrets.
+# 5. Start the API with hot reload
+npm run dev
+```
 
-### Quick Fix
+API is available at `http://localhost:4000/graphql`
 
-1. **Get Railway token:**
+### Daily use
 
-   ```bash
-   # Get token from Railway Dashboard: https://railway.app/account/tokens
-   # OR use browserless login: railway login --browserless
-   ```
+```bash
+docker compose up db -d   # if the container isn't already running
+npm run dev
+```
 
-2. **Add to GitHub:**
-   - Go to your repo → Settings → Secrets and variables → Actions
-   - Add `RAILWAY_TOKEN` secret with the token from step 1
+### After pulling schema changes
 
-3. **Re-run deployment**
+If `prisma/schema.prisma` changed in a pull:
 
-📖 **Full guide:** [GITHUB_SECRETS_SETUP.md](./GITHUB_SECRETS_SETUP.md)
+```bash
+npm run dev:setup   # re-runs generate + migrate
+npm run dev
+```
 
-## 📦 Available Scripts
+---
+
+## Scripts
 
 ### Development
 
 ```bash
-npm run dev              # Start development server
-npm run build            # Build for production
-npm run start            # Start production server
+npm run dev            # Start dev server with hot reload (runs prisma generate first)
+npm run dev:setup      # First-time setup: prisma generate + migrate dev
+npm run build          # Compile TypeScript
+npm run start          # Start production server (runs migrations first via prestart)
 ```
 
 ### Testing
 
 ```bash
-npm test                 # Run tests
-npm run test:watch       # Run tests in watch mode
-npm run test:coverage    # Run tests with coverage
+npm test               # Run tests
+npm run test:watch     # Watch mode
+npm run test:coverage  # With coverage report
 ```
 
 ### Code Quality
 
 ```bash
-npm run lint             # Lint code
-npm run format           # Format code
-npm run type-check       # TypeScript type checking
+npm run lint           # ESLint
+npm run lint:fix       # ESLint with auto-fix
+npm run format         # Prettier check
+npm run format:fix     # Prettier write
+npm run type-check     # TypeScript type check only
 ```
 
 ### Database
 
 ```bash
-npm run db:generate      # Generate Prisma client
-npm run db:migrate:staging    # Run migrations on staging
-npm run db:migrate:production # Run migrations on production
+npm run db:generate          # Generate Prisma client
+npm run db:migrate:deploy    # Apply pending migrations (non-interactive, used in production)
 ```
 
-### Deployment
+---
 
-```bash
-npm run deploy:staging   # Deploy to staging
-npm run deploy:production # Deploy to production
-```
+## Environment Variables
 
-## 🌍 Environments
+Copy `.env.example` to `.env`. For local dev the defaults work out of the box with `docker compose up db -d`.
 
-- **Development:** `http://localhost:4000`
-- **Staging:** Auto-deployed from `main` branch
-- **Production:** Manual deployment workflow
+| Variable       | Required | Description                                                |
+| -------------- | -------- | ---------------------------------------------------------- |
+| `DATABASE_URL` | Yes      | PostgreSQL connection string                               |
+| `JWT_SECRET`   | Yes      | Secret for signing JWT tokens                              |
+| `PORT`         | No       | Server port (default: 4000)                                |
+| `NODE_ENV`     | No       | `development` / `staging` / `production`                   |
+| `CORS_ORIGIN`  | No       | Allowed frontend origin (default: `http://localhost:5173`) |
+| `SENTRY_DSN`   | No       | Sentry error tracking DSN                                  |
 
-## 🏥 Health Checks
+---
 
-- `GET /health` - Basic health check
-- `GET /healthz` - Kubernetes-style health check
-- `GET /readyz` - Database readiness check
-- `GET /livez` - Liveness check
-- `GET /health/detailed` - Comprehensive health with metrics
+## Health Endpoints
 
-## 🔧 Configuration
+| Endpoint               | Description                                            |
+| ---------------------- | ------------------------------------------------------ |
+| `GET /health`          | Returns `ok`                                           |
+| `GET /healthz`         | Returns `ok` (Railway probe)                           |
+| `GET /livez`           | Returns `alive`                                        |
+| `GET /readyz`          | Checks database connection — 200 ready / 503 not ready |
+| `GET /health/detailed` | DB status, memory usage, system info                   |
 
-### Environment Variables
+---
 
-Copy `.env.template` to `.env` and configure:
+## Deployment
 
-```bash
-# Database
-DATABASE_URL=postgresql://username:password@localhost:5432/betmate_dev
+Railway deploys automatically from `main`. Staging environment:
+`https://betmate-api-staging-staging.up.railway.app`
 
-# Authentication
-JWT_SECRET=your-super-secret-jwt-key
+Required Railway environment variables: `DATABASE_URL`, `JWT_SECRET`, `NODE_AUTH_TOKEN`, `NODE_ENV`, `CORS_ORIGIN`.
 
-# CORS
-CORS_ORIGIN=http://localhost:5173
-```
+---
 
-### Railway Environment Variables
-
-Set these in your Railway dashboard:
-
-- `NODE_ENV`
-- `DATABASE_URL` (provided by Railway)
-- `JWT_SECRET`
-- `CORS_ORIGIN`
-- `SENTRY_DSN` (optional)
-
-## 🚀 Deployment
-
-### Automatic Deployment
-
-- **Staging:** Deploys automatically when you push to `main` branch
-- **Production:** Use the "Deploy to Production" workflow (manual trigger)
-
-### Manual Deployment
-
-```bash
-# Deploy to staging
-npm run deploy:staging
-
-# Deploy to production
-npm run deploy:production
-```
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-1. **"Project Token not found"**
-   - See [GITHUB_SECRETS_SETUP.md](./GITHUB_SECRETS_SETUP.md)
-
-2. **Database connection issues**
-   - Check your `DATABASE_URL` environment variable
-   - Run `npm run db:generate`
-
-3. **Build failures**
-   - Run `npm run type-check` to check for TypeScript errors
-   - Run `npm run lint` to check for linting issues
-
-### Debug Commands
-
-```bash
-# Check Railway authentication
-railway whoami
-
-# Check project status
-railway status
-
-# View logs
-railway logs --environment staging
-```
-
-## 📁 Project Structure
+## Project Structure
 
 ```
 src/
-├── app.ts              # Express app configuration
-├── index.ts            # Application entry point
-├── graphql/            # GraphQL schema and resolvers
-├── lib/                # Utilities and configuration
-├── test/               # Test utilities and setup
-└── scripts/            # Deployment and utility scripts
+├── index.ts          # Entry point
+├── app.ts            # Express + Apollo setup
+├── graphql/          # Schema loader and resolvers
+├── lib/              # Config, auth, logger, Prisma client
+├── services/         # Business logic (AuthService)
+└── utils/            # Helpers
+
+prisma/
+└── schema.prisma     # Database schema
+
+postman/              # Postman collection and environment files
 ```
 
-## 🤝 Contributing
+---
 
-1. Create a feature branch
-2. Make your changes
-3. Run tests: `npm test`
-4. Run linting: `npm run lint`
-5. Create a pull request
+## GraphQL API
 
-## 📄 License
+Schema is defined in the `betmate-contracts` package (`@betmate-ap/contracts`).
 
-[Your License Here]
+**Queries:** `health`, `me`
+
+**Mutations:** `signup`, `login`, `logout`, `refreshToken`, `sendVerificationEmail`, `verifyEmail`, `forgotPassword`, `resetPassword`
+
+Import `postman/betmate-api.postman_collection.json` into Postman to test all endpoints with automated token capture.
