@@ -1,0 +1,605 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "BetMate API",
+    "description": "BetMate API — Express + Apollo GraphQL + Prisma\n\n**Flow:**\n1. Run **Signup** or **Login** → `accessToken` and `refreshToken` are captured automatically into collection variables.\n2. All authenticated requests (Me, Logout, Refresh Token) use `{{accessToken}}` via Bearer auth — no manual copy-paste.\n3. Switch environments (Local / Staging) using the env selector.\n\n**Collection variables auto-managed:**\n- `accessToken` — set by Signup/Login, cleared by Logout\n- `refreshToken` — set by Signup/Login, updated by Refresh Token\n- `userId` / `userEmail` — set by Signup/Login for convenience",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string",
+      "description": "JWT access token — auto-populated by Signup / Login"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string",
+      "description": "Refresh token — auto-populated by Signup / Login"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string",
+      "description": "Logged-in user ID — auto-populated by Signup / Login"
+    },
+    {
+      "key": "userEmail",
+      "value": "",
+      "type": "string",
+      "description": "Logged-in user email — auto-populated by Signup / Login"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "description": "Infrastructure health endpoints. These are unauthenticated and used by Railway for liveness/readiness probes.",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Basic health check. Returns plain text `ok`. Railway uses this for the healthcheck probe."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Returns ok\", () => pm.expect(pm.response.text()).to.equal(\"ok\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /healthz",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/healthz",
+              "host": ["{{baseUrl}}"],
+              "path": ["healthz"]
+            },
+            "description": "Alias for /health. Returns plain text `ok`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Returns ok\", () => pm.expect(pm.response.text()).to.equal(\"ok\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /livez",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/livez",
+              "host": ["{{baseUrl}}"],
+              "path": ["livez"]
+            },
+            "description": "Liveness probe. Returns `alive` if the process is running."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Returns alive\", () => pm.expect(pm.response.text()).to.equal(\"alive\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /readyz",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/readyz",
+              "host": ["{{baseUrl}}"],
+              "path": ["readyz"]
+            },
+            "description": "Readiness probe. Runs `SELECT 1` against the database. Returns 200 when DB is reachable, 503 when not."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Status is ready\", () => pm.expect(json.status).to.equal(\"ready\"));",
+                  "pm.test(\"Database is ok\", () => pm.expect(json.checks.database).to.equal(\"ok\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /health/detailed",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health/detailed",
+              "host": ["{{baseUrl}}"],
+              "path": ["health", "detailed"]
+            },
+            "description": "Extended health check with DB status, memory usage, system info, and request metrics."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 or 503\", () => pm.expect(pm.response.code).to.be.oneOf([200, 503]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Has status field\", () => pm.expect(json.status).to.be.a(\"string\"));",
+                  "pm.test(\"Has checks field\", () => pm.expect(json.checks).to.exist);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "description": "Authentication flows. Signup and Login automatically capture `accessToken`, `refreshToken`, `userId`, and `userEmail` into collection variables — subsequent requests use them with no manual copying.",
+      "item": [
+        {
+          "name": "Signup",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation Signup($input: SignupInput!) {\n  signup(input: $input) {\n    accessToken\n    refreshToken\n    user {\n      id\n      email\n      username\n      firstName\n      lastName\n      emailVerified\n      isActive\n      createdAt\n    }\n  }\n}",
+                "variables": "{\n  \"input\": {\n    \"email\": \"{{$randomEmail}}\",\n    \"username\": \"user_{{$randomInt}}\",\n    \"firstName\": \"Test\",\n    \"lastName\": \"User\",\n    \"password\": \"Test123!\"\n  }\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Create a new account. Uses Postman dynamic variables (`{{$randomEmail}}`, `{{$randomInt}}`) so every run generates a unique user — no duplicate email errors.\n\n**Auto-captures:** `accessToken`, `refreshToken`, `userId`, `userEmail`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No GraphQL errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Returns accessToken\", () => pm.expect(json.data.signup.accessToken).to.be.a(\"string\").and.not.empty);",
+                  "pm.test(\"Returns refreshToken\", () => pm.expect(json.data.signup.refreshToken).to.be.a(\"string\").and.not.empty);",
+                  "pm.test(\"Returns user with id\", () => pm.expect(json.data.signup.user.id).to.exist);",
+                  "pm.test(\"User email matches input\", () => pm.expect(json.data.signup.user.email).to.be.a(\"string\"));",
+                  "",
+                  "if (json.data && json.data.signup) {",
+                  "  const { accessToken, refreshToken, user } = json.data.signup;",
+                  "  pm.collectionVariables.set(\"accessToken\", accessToken);",
+                  "  pm.collectionVariables.set(\"refreshToken\", refreshToken);",
+                  "  pm.collectionVariables.set(\"userId\", user.id);",
+                  "  pm.collectionVariables.set(\"userEmail\", user.email);",
+                  "  console.log(\"Captured accessToken for:\", user.email);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation Login($input: LoginInput!) {\n  login(input: $input) {\n    accessToken\n    refreshToken\n    user {\n      id\n      email\n      username\n      firstName\n      lastName\n      emailVerified\n      isActive\n      lastLogin\n      createdAt\n    }\n  }\n}",
+                "variables": "{\n  \"input\": {\n    \"email\": \"{{userEmail}}\",\n    \"password\": \"Test123!\"\n  }\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Login with existing credentials. Uses `{{userEmail}}` captured from Signup — or replace with a fixed email.\n\n**Auto-captures:** `accessToken`, `refreshToken` (rotated on every login)"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No GraphQL errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Returns accessToken\", () => pm.expect(json.data.login.accessToken).to.be.a(\"string\").and.not.empty);",
+                  "pm.test(\"Returns refreshToken\", () => pm.expect(json.data.login.refreshToken).to.be.a(\"string\").and.not.empty);",
+                  "pm.test(\"Returns user with id\", () => pm.expect(json.data.login.user.id).to.exist);",
+                  "",
+                  "if (json.data && json.data.login) {",
+                  "  const { accessToken, refreshToken, user } = json.data.login;",
+                  "  pm.collectionVariables.set(\"accessToken\", accessToken);",
+                  "  pm.collectionVariables.set(\"refreshToken\", refreshToken);",
+                  "  pm.collectionVariables.set(\"userId\", user.id);",
+                  "  pm.collectionVariables.set(\"userEmail\", user.email);",
+                  "  console.log(\"Logged in as:\", user.email);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me (Authenticated)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query Me {\n  me {\n    id\n    email\n    username\n    firstName\n    lastName\n    avatar\n    emailVerified\n    isActive\n    lastLogin\n    createdAt\n    updatedAt\n  }\n}",
+                "variables": ""
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Fetch the currently authenticated user. Uses `{{accessToken}}` from collection-level Bearer auth — set automatically by Signup or Login.\n\nReturns `null` if token is missing or expired."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No GraphQL errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Returns authenticated user\", () => {",
+                  "  pm.expect(json.data.me).to.not.be.null;",
+                  "  pm.expect(json.data.me.id).to.equal(pm.collectionVariables.get(\"userId\"));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "refreshToken={{refreshToken}}", "description": "Manually set cookie — Postman does not auto-send cookies from Set-Cookie headers in the same way browsers do. Replace with the actual refreshToken value if needed." }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation RefreshToken {\n  refreshToken {\n    accessToken\n    refreshToken\n    user {\n      id\n      email\n      username\n    }\n  }\n}",
+                "variables": ""
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Exchange the refresh token for a new access token. The refresh token is sent via HTTP-only cookie.\n\n**Note:** The Cookie header here manually forwards `{{refreshToken}}` captured during Login/Signup. In a real browser, this cookie is sent automatically.\n\n**Auto-captures:** Rotated `accessToken` and `refreshToken`"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No GraphQL errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Returns new accessToken\", () => pm.expect(json.data.refreshToken.accessToken).to.be.a(\"string\").and.not.empty);",
+                  "",
+                  "if (json.data && json.data.refreshToken) {",
+                  "  const { accessToken, refreshToken } = json.data.refreshToken;",
+                  "  pm.collectionVariables.set(\"accessToken\", accessToken);",
+                  "  pm.collectionVariables.set(\"refreshToken\", refreshToken);",
+                  "  console.log(\"Tokens rotated successfully\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "refreshToken={{refreshToken}}" }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation Logout {\n  logout\n}",
+                "variables": ""
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Invalidate the current session. Clears the refresh token from the database and revokes the cookie.\n\n**Auto-clears:** `accessToken`, `refreshToken` collection variables after success."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No GraphQL errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Logout returns true\", () => pm.expect(json.data.logout).to.be.true);",
+                  "",
+                  "pm.collectionVariables.set(\"accessToken\", \"\");",
+                  "pm.collectionVariables.set(\"refreshToken\", \"\");",
+                  "console.log(\"Tokens cleared from collection variables\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GraphQL Health Query",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query Health {\n  health\n}",
+                "variables": ""
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "GraphQL-level health check. Verifies the Apollo server and schema are operational."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No GraphQL errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Health returns ok\", () => pm.expect(json.data.health).to.equal(\"ok\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Stubs (Not Yet Implemented)",
+          "description": "These mutations are defined in the schema and return `true`, but the actual logic is not yet implemented. Placeholders for email verification and password reset flows.",
+          "item": [
+            {
+              "name": "Send Verification Email",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "graphql",
+                  "graphql": {
+                    "query": "mutation SendVerificationEmail {\n  sendVerificationEmail\n}",
+                    "variables": ""
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["graphql"]
+                },
+                "description": "**STUB** — Not yet implemented. Requires auth. Will send a verification email to the logged-in user's address."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test(\"Returns true (stub)\", () => pm.expect(json.data.sendVerificationEmail).to.be.true);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Verify Email",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "graphql",
+                  "graphql": {
+                    "query": "mutation VerifyEmail($token: String!) {\n  verifyEmail(token: $token)\n}",
+                    "variables": "{\n  \"token\": \"replace-with-verification-token\"\n}"
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["graphql"]
+                },
+                "description": "**STUB** — Not yet implemented. Token would be from the verification email link."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test(\"Returns true (stub)\", () => pm.expect(json.data.verifyEmail).to.be.true);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Forgot Password",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "graphql",
+                  "graphql": {
+                    "query": "mutation ForgotPassword($email: String!) {\n  forgotPassword(email: $email)\n}",
+                    "variables": "{\n  \"email\": \"{{userEmail}}\"\n}"
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["graphql"]
+                },
+                "description": "**STUB** — Not yet implemented. Will send a password reset email."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test(\"Returns true (stub)\", () => pm.expect(json.data.forgotPassword).to.be.true);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Reset Password",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "graphql",
+                  "graphql": {
+                    "query": "mutation ResetPassword($input: ResetPasswordInput!) {\n  resetPassword(input: $input)\n}",
+                    "variables": "{\n  \"input\": {\n    \"token\": \"replace-with-reset-token\",\n    \"newPassword\": \"NewPass123!\"\n  }\n}"
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["graphql"]
+                },
+                "description": "**STUB** — Not yet implemented. Token would be from the password reset email link."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test(\"Returns true (stub)\", () => pm.expect(json.data.resetPassword).to.be.true);"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
