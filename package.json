@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "npx prisma generate && tsx watch src/index.ts",
+    "dev:setup": "npx prisma generate && npx prisma migrate dev",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "test": "NODE_ENV=test jest",
