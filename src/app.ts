@@ -149,6 +149,38 @@ export async function createApp() {
     }),
   );
 
+  // Dev only: create a test match without Prisma Studio (idempotent)
+  if (!isProd) {
+    app.post("/dev/create-match", async (req, res) => {
+      const hoursFromNow = Number(req.body?.hoursFromNow ?? 5);
+      const scheduledAt = new Date(Date.now() + hoursFromNow * 60 * 60 * 1000);
+      const DEV_MATCH_ID = "dev-test-match";
+
+      const existing = await prisma.match.findFirst({
+        where: { externalId: DEV_MATCH_ID },
+      });
+
+      const match = existing
+        ? await prisma.match.update({
+            where: { id: existing.id },
+            data: { scheduledAt, status: "UPCOMING" },
+          })
+        : await prisma.match.create({
+            data: {
+              externalId: DEV_MATCH_ID,
+              team1: req.body?.team1 ?? "Mumbai Indians",
+              team2: req.body?.team2 ?? "Chennai Super Kings",
+              tournament: req.body?.tournament ?? "IPL 2026",
+              venue: req.body?.venue ?? "Wankhede Stadium",
+              scheduledAt,
+              status: "UPCOMING",
+            },
+          });
+
+      res.status(existing ? 200 : 201).json(match);
+    });
+  }
+
   // Health endpoints
   app.get("/health", (_req, res) => res.send("ok"));
   app.get("/healthz", (_req, res) => res.send("ok"));

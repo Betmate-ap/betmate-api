@@ -2,52 +2,36 @@
   "info": {
     "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "name": "BetMate API",
-    "description": "BetMate API — Express + Apollo GraphQL + Prisma\n\n**Flow:**\n1. Run **Signup** or **Login** → `accessToken` and `refreshToken` are captured automatically into collection variables.\n2. All authenticated requests (Me, Logout, Refresh Token) use `{{accessToken}}` via Bearer auth — no manual copy-paste.\n3. Switch environments (Local / Staging) using the env selector.\n\n**Collection variables auto-managed:**\n- `accessToken` — set by Signup/Login, cleared by Logout\n- `refreshToken` — set by Signup/Login, updated by Refresh Token\n- `userId` / `userEmail` — set by Signup/Login for convenience",
+    "description": "Run requests top to bottom in order. Two accounts are used: Challenger (sends bets) and Challengee (receives bets). Tokens and IDs are captured automatically — you never need to copy-paste anything.\n\nPrerequisite before testing bets: seed a match via Prisma Studio (npx prisma studio) with status UPCOMING and scheduledAt at least 4 hours from now.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
     "type": "bearer",
     "bearer": [
-      {
-        "key": "token",
-        "value": "{{accessToken}}",
-        "type": "string"
-      }
+      { "key": "token", "value": "{{challengerToken}}", "type": "string" }
     ]
   },
   "variable": [
-    {
-      "key": "accessToken",
-      "value": "",
-      "type": "string",
-      "description": "JWT access token — auto-populated by Signup / Login"
-    },
-    {
-      "key": "refreshToken",
-      "value": "",
-      "type": "string",
-      "description": "Refresh token — auto-populated by Signup / Login"
-    },
-    {
-      "key": "userId",
-      "value": "",
-      "type": "string",
-      "description": "Logged-in user ID — auto-populated by Signup / Login"
-    },
-    {
-      "key": "userEmail",
-      "value": "",
-      "type": "string",
-      "description": "Logged-in user email — auto-populated by Signup / Login"
-    }
+    { "key": "challengerToken", "value": "", "type": "string" },
+    { "key": "challengerRefreshToken", "value": "", "type": "string" },
+    { "key": "challengerId", "value": "", "type": "string" },
+    { "key": "challengeeToken", "value": "", "type": "string" },
+    { "key": "challengeeRefreshToken", "value": "", "type": "string" },
+    { "key": "challengeeId", "value": "", "type": "string" },
+    { "key": "friendshipId", "value": "", "type": "string" },
+    { "key": "matchId", "value": "", "type": "string" },
+    { "key": "team1", "value": "", "type": "string" },
+    { "key": "team2", "value": "", "type": "string" },
+    { "key": "betId", "value": "", "type": "string" },
+    { "key": "tossWinnerId", "value": "", "type": "string" },
+    { "key": "tossWinnerToken", "value": "", "type": "string" }
   ],
   "item": [
     {
       "name": "Health",
-      "description": "Infrastructure health endpoints. These are unauthenticated and used by Railway for liveness/readiness probes.",
       "item": [
         {
-          "name": "GET /health",
+          "name": "Server Health",
           "request": {
             "auth": { "type": "noauth" },
             "method": "GET",
@@ -56,8 +40,7 @@
               "raw": "{{baseUrl}}/health",
               "host": ["{{baseUrl}}"],
               "path": ["health"]
-            },
-            "description": "Basic health check. Returns plain text `ok`. Railway uses this for the healthcheck probe."
+            }
           },
           "event": [
             {
@@ -65,7 +48,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Server is up\", () => pm.response.to.have.status(200));",
                   "pm.test(\"Returns ok\", () => pm.expect(pm.response.text()).to.equal(\"ok\"));"
                 ]
               }
@@ -73,59 +56,7 @@
           ]
         },
         {
-          "name": "GET /healthz",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/healthz",
-              "host": ["{{baseUrl}}"],
-              "path": ["healthz"]
-            },
-            "description": "Alias for /health. Returns plain text `ok`."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Returns ok\", () => pm.expect(pm.response.text()).to.equal(\"ok\"));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "GET /livez",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/livez",
-              "host": ["{{baseUrl}}"],
-              "path": ["livez"]
-            },
-            "description": "Liveness probe. Returns `alive` if the process is running."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Returns alive\", () => pm.expect(pm.response.text()).to.equal(\"alive\"));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "GET /readyz",
+          "name": "Database Health",
           "request": {
             "auth": { "type": "noauth" },
             "method": "GET",
@@ -134,8 +65,7 @@
               "raw": "{{baseUrl}}/readyz",
               "host": ["{{baseUrl}}"],
               "path": ["readyz"]
-            },
-            "description": "Readiness probe. Runs `SELECT 1` against the database. Returns 200 when DB is reachable, 503 when not."
+            }
           },
           "event": [
             {
@@ -143,27 +73,29 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Database is reachable\", () => pm.response.to.have.status(200));",
                   "const json = pm.response.json();",
-                  "pm.test(\"Status is ready\", () => pm.expect(json.status).to.equal(\"ready\"));",
-                  "pm.test(\"Database is ok\", () => pm.expect(json.checks.database).to.equal(\"ok\"));"
+                  "pm.test(\"DB status is ok\", () => pm.expect(json.checks.database).to.equal(\"ok\"));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "GET /health/detailed",
+          "name": "GraphQL Ping",
           "request": {
             "auth": { "type": "noauth" },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/health/detailed",
-              "host": ["{{baseUrl}}"],
-              "path": ["health", "detailed"]
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": { "query": "query { health }", "variables": "" }
             },
-            "description": "Extended health check with DB status, memory usage, system info, and request metrics."
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            }
           },
           "event": [
             {
@@ -171,10 +103,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200 or 503\", () => pm.expect(pm.response.code).to.be.oneOf([200, 503]));",
-                  "const json = pm.response.json();",
-                  "pm.test(\"Has status field\", () => pm.expect(json.status).to.be.a(\"string\"));",
-                  "pm.test(\"Has checks field\", () => pm.expect(json.checks).to.exist);"
+                  "pm.test(\"GraphQL responds\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"No errors\", () => pm.expect(pm.response.json().errors).to.be.undefined);",
+                  "pm.test(\"Returns ok\", () => pm.expect(pm.response.json().data.health).to.equal(\"ok\"));"
                 ]
               }
             }
@@ -182,12 +113,13 @@
         }
       ]
     },
+
     {
-      "name": "Auth",
-      "description": "Authentication flows. Signup and Login automatically capture `accessToken`, `refreshToken`, `userId`, and `userEmail` into collection variables — subsequent requests use them with no manual copying.",
+      "name": "1. Setup Accounts",
+      "description": "Run both requests in order. Challenger = the user who sends challenges. Challengee = the user who receives them. All tokens are saved automatically.",
       "item": [
         {
-          "name": "Signup",
+          "name": "Create Challenger Account",
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
@@ -195,8 +127,8 @@
             "body": {
               "mode": "graphql",
               "graphql": {
-                "query": "mutation Signup($input: SignupInput!) {\n  signup(input: $input) {\n    accessToken\n    refreshToken\n    user {\n      id\n      email\n      username\n      firstName\n      lastName\n      emailVerified\n      isActive\n      createdAt\n    }\n  }\n}",
-                "variables": "{\n  \"input\": {\n    \"email\": \"{{$randomEmail}}\",\n    \"username\": \"user_{{$randomInt}}\",\n    \"firstName\": \"Test\",\n    \"lastName\": \"User\",\n    \"password\": \"Test123!\"\n  }\n}"
+                "query": "mutation Signup($input: SignupInput!) {\n  signup(input: $input) {\n    accessToken\n    refreshToken\n    user { id email username firstName points }\n  }\n}",
+                "variables": "{\n  \"input\": {\n    \"email\": \"challenger_{{$randomInt}}@betmate.test\",\n    \"username\": \"challenger{{$randomInt}}\",\n    \"firstName\": \"Challenger\",\n    \"lastName\": \"User\",\n    \"password\": \"Test123!\"\n  }\n}"
               }
             },
             "url": {
@@ -204,7 +136,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["graphql"]
             },
-            "description": "Create a new account. Uses Postman dynamic variables (`{{$randomEmail}}`, `{{$randomInt}}`) so every run generates a unique user — no duplicate email errors.\n\n**Auto-captures:** `accessToken`, `refreshToken`, `userId`, `userEmail`"
+            "description": "Creates the account that will send friend requests and bet challenges. Saves challengerToken and challengerId automatically."
           },
           "event": [
             {
@@ -213,29 +145,21 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
-                  "",
                   "const json = pm.response.json();",
-                  "pm.test(\"No GraphQL errors\", () => pm.expect(json.errors).to.be.undefined);",
-                  "pm.test(\"Returns accessToken\", () => pm.expect(json.data.signup.accessToken).to.be.a(\"string\").and.not.empty);",
-                  "pm.test(\"Returns refreshToken\", () => pm.expect(json.data.signup.refreshToken).to.be.a(\"string\").and.not.empty);",
-                  "pm.test(\"Returns user with id\", () => pm.expect(json.data.signup.user.id).to.exist);",
-                  "pm.test(\"User email matches input\", () => pm.expect(json.data.signup.user.email).to.be.a(\"string\"));",
-                  "",
-                  "if (json.data && json.data.signup) {",
-                  "  const { accessToken, refreshToken, user } = json.data.signup;",
-                  "  pm.collectionVariables.set(\"accessToken\", accessToken);",
-                  "  pm.collectionVariables.set(\"refreshToken\", refreshToken);",
-                  "  pm.collectionVariables.set(\"userId\", user.id);",
-                  "  pm.collectionVariables.set(\"userEmail\", user.email);",
-                  "  console.log(\"Captured accessToken for:\", user.email);",
-                  "}"
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Got access token\", () => pm.expect(json.data.signup.accessToken).to.be.a('string').and.not.empty);",
+                  "const { accessToken, refreshToken, user } = json.data.signup;",
+                  "pm.collectionVariables.set('challengerToken', accessToken);",
+                  "pm.collectionVariables.set('challengerRefreshToken', refreshToken);",
+                  "pm.collectionVariables.set('challengerId', user.id);",
+                  "console.log('Challenger created:', user.username, '| id:', user.id);"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Login",
+          "name": "Create Challengee Account",
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
@@ -243,8 +167,8 @@
             "body": {
               "mode": "graphql",
               "graphql": {
-                "query": "mutation Login($input: LoginInput!) {\n  login(input: $input) {\n    accessToken\n    refreshToken\n    user {\n      id\n      email\n      username\n      firstName\n      lastName\n      emailVerified\n      isActive\n      lastLogin\n      createdAt\n    }\n  }\n}",
-                "variables": "{\n  \"input\": {\n    \"email\": \"{{userEmail}}\",\n    \"password\": \"Test123!\"\n  }\n}"
+                "query": "mutation Signup($input: SignupInput!) {\n  signup(input: $input) {\n    accessToken\n    refreshToken\n    user { id email username firstName points }\n  }\n}",
+                "variables": "{\n  \"input\": {\n    \"email\": \"challengee_{{$randomInt}}@betmate.test\",\n    \"username\": \"challengee{{$randomInt}}\",\n    \"firstName\": \"Challengee\",\n    \"lastName\": \"User\",\n    \"password\": \"Test123!\"\n  }\n}"
               }
             },
             "url": {
@@ -252,7 +176,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["graphql"]
             },
-            "description": "Login with existing credentials. Uses `{{userEmail}}` captured from Signup — or replace with a fixed email.\n\n**Auto-captures:** `accessToken`, `refreshToken` (rotated on every login)"
+            "description": "Creates the account that receives friend requests and bet challenges. Saves challengeeToken and challengeeId automatically."
           },
           "event": [
             {
@@ -261,35 +185,122 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
-                  "",
                   "const json = pm.response.json();",
-                  "pm.test(\"No GraphQL errors\", () => pm.expect(json.errors).to.be.undefined);",
-                  "pm.test(\"Returns accessToken\", () => pm.expect(json.data.login.accessToken).to.be.a(\"string\").and.not.empty);",
-                  "pm.test(\"Returns refreshToken\", () => pm.expect(json.data.login.refreshToken).to.be.a(\"string\").and.not.empty);",
-                  "pm.test(\"Returns user with id\", () => pm.expect(json.data.login.user.id).to.exist);",
-                  "",
-                  "if (json.data && json.data.login) {",
-                  "  const { accessToken, refreshToken, user } = json.data.login;",
-                  "  pm.collectionVariables.set(\"accessToken\", accessToken);",
-                  "  pm.collectionVariables.set(\"refreshToken\", refreshToken);",
-                  "  pm.collectionVariables.set(\"userId\", user.id);",
-                  "  pm.collectionVariables.set(\"userEmail\", user.email);",
-                  "  console.log(\"Logged in as:\", user.email);",
-                  "}"
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Got access token\", () => pm.expect(json.data.signup.accessToken).to.be.a('string').and.not.empty);",
+                  "const { accessToken, refreshToken, user } = json.data.signup;",
+                  "pm.collectionVariables.set('challengeeToken', accessToken);",
+                  "pm.collectionVariables.set('challengerRefreshToken', refreshToken);",
+                  "pm.collectionVariables.set('challengeeId', user.id);",
+                  "console.log('Challengee created:', user.username, '| id:', user.id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "2. Become Betmates",
+      "description": "Challenger sends a friend request. Challengee accepts it. After this they can challenge each other on matches.",
+      "item": [
+        {
+          "name": "Send Friend Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation SendFriendRequest($userId: ID!) {\n  sendFriendRequest(userId: $userId) {\n    id\n    status\n    requester { id username }\n    receiver { id username }\n  }\n}",
+                "variables": "{\n  \"userId\": \"{{challengeeId}}\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Runs as Challenger. Saves friendshipId automatically."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Status is PENDING\", () => pm.expect(json.data.sendFriendRequest.status).to.equal('PENDING'));",
+                  "pm.collectionVariables.set('friendshipId', json.data.sendFriendRequest.id);",
+                  "console.log('Friend request sent | friendshipId:', json.data.sendFriendRequest.id);"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Me (Authenticated)",
+          "name": "Accept Friend Request",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{challengeeToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "graphql",
               "graphql": {
-                "query": "query Me {\n  me {\n    id\n    email\n    username\n    firstName\n    lastName\n    avatar\n    emailVerified\n    isActive\n    lastLogin\n    createdAt\n    updatedAt\n  }\n}",
+                "query": "mutation AcceptFriendRequest($friendshipId: ID!) {\n  acceptFriendRequest(friendshipId: $friendshipId) {\n    id\n    status\n    requester { id username }\n    receiver { id username }\n  }\n}",
+                "variables": "{\n  \"friendshipId\": \"{{friendshipId}}\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Runs as Challengee. Uses the friendshipId saved in the previous step."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Now Betmates\", () => pm.expect(json.data.acceptFriendRequest.status).to.equal('ACCEPTED'));",
+                  "console.log('They are now Betmates!');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "View Betmates List",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query MyBetmates {\n  myBetmates {\n    id\n    username\n    firstName\n    lastName\n    points\n  }\n}",
                 "variables": ""
               }
             },
@@ -298,7 +309,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["graphql"]
             },
-            "description": "Fetch the currently authenticated user. Uses `{{accessToken}}` from collection-level Bearer auth — set automatically by Signup or Login.\n\nReturns `null` if token is missing or expired."
+            "description": "Verify the Challengee appears in Challenger's betmates list."
           },
           "event": [
             {
@@ -307,12 +318,488 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
-                  "",
                   "const json = pm.response.json();",
-                  "pm.test(\"No GraphQL errors\", () => pm.expect(json.errors).to.be.undefined);",
-                  "pm.test(\"Returns authenticated user\", () => {",
-                  "  pm.expect(json.data.me).to.not.be.null;",
-                  "  pm.expect(json.data.me.id).to.equal(pm.collectionVariables.get(\"userId\"));",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Betmates list is not empty\", () => pm.expect(json.data.myBetmates.length).to.be.above(0));",
+                  "const ids = json.data.myBetmates.map(u => u.id);",
+                  "pm.test(\"Challengee is in list\", () => pm.expect(ids).to.include(pm.collectionVariables.get('challengeeId')));",
+                  "console.log('Betmates:', json.data.myBetmates.map(u => u.username).join(', '));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search Users",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query SearchUsers($query: String!) {\n  searchUsers(query: $query) {\n    user { id username firstName points }\n    friendshipStatus\n    friendshipId\n  }\n}",
+                "variables": "{\n  \"query\": \"challengee\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Search for users by username or name. Blocked users are hidden. Returns friendship status alongside each result."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Returns results\", () => pm.expect(json.data.searchUsers).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "3.Get a Match",
+      "description": "Run Create Test Match first, then Get Upcoming Matches. The create request only works in local dev and is blocked in production.",
+      "item": [
+        {
+          "name": "Create Test Match",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"team1\": \"Mumbai Indians\",\n  \"team2\": \"Chennai Super Kings\",\n  \"tournament\": \"IPL 2026\",\n  \"venue\": \"Wankhede Stadium\",\n  \"hoursFromNow\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/dev/create-match",
+              "host": ["{{baseUrl}}"],
+              "path": ["dev", "create-match"]
+            },
+            "description": "Creates a test match scheduled 5 hours from now. Only works in local dev. Change hoursFromNow to any value above 2 to keep the challenge window open. Saves matchId, team1, team2 automatically."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Success\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const match = pm.response.json();",
+                  "pm.test(\"Match returned\", () => pm.expect(match.id).to.be.a('string'));",
+                  "pm.test(\"Status is UPCOMING\", () => pm.expect(match.status).to.equal('UPCOMING'));",
+                  "const action = pm.response.code === 201 ? 'created' : 'refreshed (already existed)';",
+                  "pm.collectionVariables.set('matchId', match.id);",
+                  "pm.collectionVariables.set('team1', match.team1);",
+                  "pm.collectionVariables.set('team2', match.team2);",
+                  "console.log('Match', action + ':', match.team1, 'vs', match.team2, '| id:', match.id);",
+                  "console.log('Scheduled at:', match.scheduledAt);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Upcoming Matches",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query Matches($status: MatchStatus) {\n  matches(status: $status) {\n    id\n    team1\n    team2\n    scheduledAt\n    venue\n    tournament\n    status\n  }\n}",
+                "variables": "{\n  \"status\": \"UPCOMING\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Saves matchId, team1, and team2 automatically from the first result. These are used in all bet requests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Has upcoming matches\", () => {",
+                  "  pm.expect(json.data.matches).to.be.an('array');",
+                  "  pm.expect(json.data.matches.length).to.be.above(0, 'No upcoming matches found. Seed one via Prisma Studio first.');",
+                  "});",
+                  "if (json.data.matches.length > 0) {",
+                  "  const m = json.data.matches[0];",
+                  "  pm.collectionVariables.set('matchId', m.id);",
+                  "  pm.collectionVariables.set('team1', m.team1);",
+                  "  pm.collectionVariables.set('team2', m.team2);",
+                  "  console.log('Match saved:', m.team1, 'vs', m.team2);",
+                  "  console.log('Scheduled at:', m.scheduledAt);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Match Details",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query Match($id: ID!) {\n  match(id: $id) {\n    id\n    team1\n    team2\n    scheduledAt\n    venue\n    tournament\n    status\n    winnerTeam\n  }\n}",
+                "variables": "{\n  \"id\": \"{{matchId}}\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Match found\", () => pm.expect(json.data.match).to.not.be.null);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "4. Bet Flow",
+      "description": "The complete bet lifecycle from challenge to team lock. Run every request in this folder top to bottom without skipping any.",
+      "item": [
+        {
+          "name": "Send Challenge",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation SendChallenge($input: SendChallengeInput!) {\n  sendChallenge(input: $input) {\n    id\n    status\n    pointsStake\n    match { id team1 team2 scheduledAt }\n    challenger { id username }\n    challengee { id username }\n    createdAt\n  }\n}",
+                "variables": "{\n  \"input\": {\n    \"matchId\": \"{{matchId}}\",\n    \"challengeeId\": \"{{challengeeId}}\"\n  }\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Challenger sends a bet challenge to Challengee on the saved match. Saves betId automatically."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Bet status is PENDING\", () => pm.expect(json.data.sendChallenge.status).to.equal('PENDING'));",
+                  "pm.test(\"Stake is 10 points\", () => pm.expect(json.data.sendChallenge.pointsStake).to.equal(10));",
+                  "pm.collectionVariables.set('betId', json.data.sendChallenge.id);",
+                  "console.log('Challenge sent | betId:', json.data.sendChallenge.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Challengee Views Incoming Challenge",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{challengeeToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query MyBets($status: BetStatus) {\n  myBets(status: $status) {\n    id\n    status\n    pointsStake\n    match { team1 team2 scheduledAt }\n    challenger { id username }\n    challengee { id username }\n    createdAt\n  }\n}",
+                "variables": "{\n  \"status\": \"PENDING\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Challengee checks their inbox. Should see the PENDING challenge from Challenger."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Sees the pending challenge\", () => pm.expect(json.data.myBets.length).to.be.above(0));",
+                  "console.log('Challengee sees', json.data.myBets.length, 'pending challenge(s)');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Accept Challenge",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{challengeeToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation AcceptChallenge($betId: ID!) {\n  acceptChallenge(betId: $betId) {\n    id\n    status\n    challenger { id username }\n    challengee { id username }\n  }\n}",
+                "variables": "{\n  \"betId\": \"{{betId}}\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Challengee accepts. Status moves to ACCEPTED. Either user can now flip the coin."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Bet status is ACCEPTED\", () => pm.expect(json.data.acceptChallenge.status).to.equal('ACCEPTED'));",
+                  "console.log('Challenge accepted! Either user can now flip the coin.');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Flip Coin",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation FlipCoin($betId: ID!) {\n  flipCoin(betId: $betId) {\n    id\n    status\n    tossWinner { id username }\n    tossDoneAt\n    match { team1 team2 }\n  }\n}",
+                "variables": "{\n  \"betId\": \"{{betId}}\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Random 50/50 toss. Saves tossWinnerId and tossWinnerToken automatically. The next request (Pick Team) uses the winner's token without any manual steps."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Status is TOSS_DONE\", () => pm.expect(json.data.flipCoin.status).to.equal('TOSS_DONE'));",
+                  "pm.test(\"Toss winner is set\", () => pm.expect(json.data.flipCoin.tossWinner).to.not.be.null);",
+                  "const winnerId = json.data.flipCoin.tossWinner.id;",
+                  "const winnerName = json.data.flipCoin.tossWinner.username;",
+                  "pm.collectionVariables.set('tossWinnerId', winnerId);",
+                  "const challengerId = pm.collectionVariables.get('challengerId');",
+                  "const token = winnerId === challengerId",
+                  "  ? pm.collectionVariables.get('challengerToken')",
+                  "  : pm.collectionVariables.get('challengeeToken');",
+                  "pm.collectionVariables.set('tossWinnerToken', token);",
+                  "const role = winnerId === challengerId ? 'Challenger' : 'Challengee';",
+                  "console.log('Toss winner:', winnerName, '(' + role + ')');",
+                  "console.log('Pick Team will automatically run as the winner.');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pick Team",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tossWinnerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation SelectTeam($input: SelectTeamInput!) {\n  selectTeam(input: $input) {\n    id\n    status\n    challengerPick\n    challengeePick\n    tossWinner { id username }\n    challenger { id username }\n    challengee { id username }\n    match { team1 team2 }\n  }\n}",
+                "variables": "{\n  \"input\": {\n    \"betId\": \"{{betId}}\",\n    \"team\": \"{{team1}}\"\n  }\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Runs automatically as the toss winner (token set by Flip Coin). Picks team1 from the match. The other team is automatically assigned to the opponent. Status moves to TEAMS_LOCKED."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Status is TEAMS_LOCKED\", () => pm.expect(json.data.selectTeam.status).to.equal('TEAMS_LOCKED'));",
+                  "pm.test(\"Challenger has a pick\", () => pm.expect(json.data.selectTeam.challengerPick).to.be.a('string'));",
+                  "pm.test(\"Challengee has a pick\", () => pm.expect(json.data.selectTeam.challengeePick).to.be.a('string'));",
+                  "const r = json.data.selectTeam;",
+                  "console.log(r.challenger.username + ' is backing ' + r.challengerPick);",
+                  "console.log(r.challengee.username + ' is backing ' + r.challengeePick);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Challenger Views All Bets",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query MyBets {\n  myBets {\n    id\n    status\n    pointsStake\n    challengerPick\n    challengeePick\n    match { team1 team2 scheduledAt status }\n    challenger { id username }\n    challengee { id username }\n    tossWinner { id username }\n    winner { id username }\n    createdAt\n  }\n}",
+                "variables": ""
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Has bets\", () => pm.expect(json.data.myBets.length).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "View Leaderboard",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query Leaderboard {\n  leaderboard {\n    rank\n    points\n    betsWon\n    betsLost\n    totalBets\n    user { id username firstName }\n  }\n}",
+                "variables": ""
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Shows you and all your Betmates ranked by total points. Both accounts will appear here at 0 points (no completed bets yet)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Has entries\", () => pm.expect(json.data.leaderboard.length).to.be.above(0));",
+                  "json.data.leaderboard.forEach(e => {",
+                  "  console.log('#' + e.rank, e.user.username, e.points + 'pts', e.betsWon + 'W', e.betsLost + 'L');",
                   "});"
                 ]
               }
@@ -320,23 +807,105 @@
           ]
         },
         {
-          "name": "Refresh Token",
+          "name": "View Head to Head",
           "request": {
-            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query HeadToHead($betmateId: ID!) {\n  headToHead(betmateId: $betmateId) {\n    betmate { id username points }\n    myWins\n    theirWins\n    netPoints\n    bets {\n      id\n      status\n      challengerPick\n      challengeePick\n      winner { username }\n      match { team1 team2 scheduledAt }\n    }\n  }\n}",
+                "variables": "{\n  \"betmateId\": \"{{challengeeId}}\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Full history between Challenger and Challengee. myWins and theirWins only count COMPLETED bets so they will show 0 until a match finishes."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "const h = json.data.headToHead;",
+                  "pm.test(\"Has betmate\", () => pm.expect(h.betmate).to.exist);",
+                  "console.log('vs', h.betmate.username, '| You:', h.myWins, 'W | Them:', h.theirWins, 'W | Net:', h.netPoints, 'pts');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "5. Error Cases",
+      "description": "These verify the API rejects invalid actions. Each request expects a GraphQL error in the response. Tests go green when an error IS returned.",
+      "item": [
+        {
+          "name": "Flip Before Acceptance (expect error)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation FlipCoin($betId: ID!) {\n  flipCoin(betId: $betId) {\n    id status\n  }\n}",
+                "variables": "{\n  \"betId\": \"{{betId}}\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "To test this properly: first run Send Challenge, then immediately run this without running Accept Challenge. Should return INVALID_STATUS error."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Got expected error\", () => pm.expect(json.errors).to.exist);",
+                  "pm.test(\"Error is INVALID_STATUS\", () => pm.expect(json.errors[0].extensions.code).to.equal('INVALID_STATUS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Toss Loser Picks Team (expect error)",
+          "request": {
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
               {
-                "key": "Cookie",
-                "value": "refreshToken={{refreshToken}}",
-                "description": "Manually set cookie — Postman does not auto-send cookies from Set-Cookie headers in the same way browsers do. Replace with the actual refreshToken value if needed."
+                "key": "Authorization",
+                "value": "Bearer {{challengerToken}}",
+                "description": "Change to challengeeToken if Challenger won the toss"
               }
             ],
             "body": {
               "mode": "graphql",
               "graphql": {
-                "query": "mutation RefreshToken {\n  refreshToken {\n    accessToken\n    refreshToken\n    user {\n      id\n      email\n      username\n    }\n  }\n}",
-                "variables": ""
+                "query": "mutation SelectTeam($input: SelectTeamInput!) {\n  selectTeam(input: $input) {\n    id\n  }\n}",
+                "variables": "{\n  \"input\": {\n    \"betId\": \"{{betId}}\",\n    \"team\": \"{{team1}}\"\n  }\n}"
               }
             },
             "url": {
@@ -344,7 +913,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["graphql"]
             },
-            "description": "Exchange the refresh token for a new access token. The refresh token is sent via HTTP-only cookie.\n\n**Note:** The Cookie header here manually forwards `{{refreshToken}}` captured during Login/Signup. In a real browser, this cookie is sent automatically.\n\n**Auto-captures:** Rotated `accessToken` and `refreshToken`"
+            "description": "After flipping the coin, check who LOST the toss from the Flip Coin response. Run this as the loser before T-2h. Should return NOT_TOSS_WINNER error."
           },
           "event": [
             {
@@ -353,35 +922,27 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
-                  "",
                   "const json = pm.response.json();",
-                  "pm.test(\"No GraphQL errors\", () => pm.expect(json.errors).to.be.undefined);",
-                  "pm.test(\"Returns new accessToken\", () => pm.expect(json.data.refreshToken.accessToken).to.be.a(\"string\").and.not.empty);",
-                  "",
-                  "if (json.data && json.data.refreshToken) {",
-                  "  const { accessToken, refreshToken } = json.data.refreshToken;",
-                  "  pm.collectionVariables.set(\"accessToken\", accessToken);",
-                  "  pm.collectionVariables.set(\"refreshToken\", refreshToken);",
-                  "  console.log(\"Tokens rotated successfully\");",
-                  "}"
+                  "pm.test(\"Got expected error\", () => pm.expect(json.errors).to.exist);",
+                  "pm.test(\"Error is NOT_TOSS_WINNER\", () => pm.expect(json.errors[0].extensions.code).to.equal('NOT_TOSS_WINNER'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Logout",
+          "name": "Challenge a Non Betmate (expect error)",
           "request": {
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "Cookie", "value": "refreshToken={{refreshToken}}" }
+              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
             ],
             "body": {
               "mode": "graphql",
               "graphql": {
-                "query": "mutation Logout {\n  logout\n}",
-                "variables": ""
+                "query": "mutation SendChallenge($input: SendChallengeInput!) {\n  sendChallenge(input: $input) {\n    id\n  }\n}",
+                "variables": "{\n  \"input\": {\n    \"matchId\": \"{{matchId}}\",\n    \"challengeeId\": \"this-user-does-not-exist\"\n  }\n}"
               }
             },
             "url": {
@@ -389,7 +950,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["graphql"]
             },
-            "description": "Invalidate the current session. Clears the refresh token from the database and revokes the cookie.\n\n**Auto-clears:** `accessToken`, `refreshToken` collection variables after success."
+            "description": "Tries to challenge a user who is not a Betmate. Should return NOT_BETMATES error."
           },
           "event": [
             {
@@ -398,21 +959,15 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
-                  "",
                   "const json = pm.response.json();",
-                  "pm.test(\"No GraphQL errors\", () => pm.expect(json.errors).to.be.undefined);",
-                  "pm.test(\"Logout returns true\", () => pm.expect(json.data.logout).to.be.true);",
-                  "",
-                  "pm.collectionVariables.set(\"accessToken\", \"\");",
-                  "pm.collectionVariables.set(\"refreshToken\", \"\");",
-                  "console.log(\"Tokens cleared from collection variables\");"
+                  "pm.test(\"Got expected error\", () => pm.expect(json.errors).to.exist);"
                 ]
               }
             }
           ]
         },
         {
-          "name": "GraphQL Health Query",
+          "name": "Unauthenticated Request (expect error)",
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
@@ -420,7 +975,7 @@
             "body": {
               "mode": "graphql",
               "graphql": {
-                "query": "query Health {\n  health\n}",
+                "query": "query MyBets { myBets { id } }",
                 "variables": ""
               }
             },
@@ -429,7 +984,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["graphql"]
             },
-            "description": "GraphQL-level health check. Verifies the Apollo server and schema are operational."
+            "description": "No Authorization header. Should return UNAUTHENTICATED error."
           },
           "event": [
             {
@@ -439,159 +994,178 @@
                 "exec": [
                   "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
                   "const json = pm.response.json();",
-                  "pm.test(\"No GraphQL errors\", () => pm.expect(json.errors).to.be.undefined);",
-                  "pm.test(\"Health returns ok\", () => pm.expect(json.data.health).to.equal(\"ok\"));"
+                  "pm.test(\"Got expected error\", () => pm.expect(json.errors).to.exist);",
+                  "pm.test(\"Error is UNAUTHENTICATED\", () => pm.expect(json.errors[0].extensions.code).to.equal('UNAUTHENTICATED'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Stubs (Not Yet Implemented)",
-          "description": "These mutations are defined in the schema and return `true`, but the actual logic is not yet implemented. Placeholders for email verification and password reset flows.",
-          "item": [
-            {
-              "name": "Send Verification Email",
-              "request": {
-                "method": "POST",
-                "header": [
-                  { "key": "Content-Type", "value": "application/json" }
-                ],
-                "body": {
-                  "mode": "graphql",
-                  "graphql": {
-                    "query": "mutation SendVerificationEmail {\n  sendVerificationEmail\n}",
-                    "variables": ""
-                  }
-                },
-                "url": {
-                  "raw": "{{baseUrl}}/graphql",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["graphql"]
-                },
-                "description": "**STUB** — Not yet implemented. Requires auth. Will send a verification email to the logged-in user's address."
-              },
-              "event": [
+          "name": "Decline Challenge",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
                 {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
-                      "const json = pm.response.json();",
-                      "pm.test(\"Returns true (stub)\", () => pm.expect(json.data.sendVerificationEmail).to.be.true);"
-                    ]
-                  }
+                  "key": "token",
+                  "value": "{{challengeeToken}}",
+                  "type": "string"
                 }
               ]
             },
-            {
-              "name": "Verify Email",
-              "request": {
-                "auth": { "type": "noauth" },
-                "method": "POST",
-                "header": [
-                  { "key": "Content-Type", "value": "application/json" }
-                ],
-                "body": {
-                  "mode": "graphql",
-                  "graphql": {
-                    "query": "mutation VerifyEmail($token: String!) {\n  verifyEmail(token: $token)\n}",
-                    "variables": "{\n  \"token\": \"replace-with-verification-token\"\n}"
-                  }
-                },
-                "url": {
-                  "raw": "{{baseUrl}}/graphql",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["graphql"]
-                },
-                "description": "**STUB** — Not yet implemented. Token would be from the verification email link."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
-                      "const json = pm.response.json();",
-                      "pm.test(\"Returns true (stub)\", () => pm.expect(json.data.verifyEmail).to.be.true);"
-                    ]
-                  }
-                }
-              ]
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation DeclineChallenge($betId: ID!) {\n  declineChallenge(betId: $betId)\n}",
+                "variables": "{\n  \"betId\": \"{{betId}}\"\n}"
+              }
             },
-            {
-              "name": "Forgot Password",
-              "request": {
-                "auth": { "type": "noauth" },
-                "method": "POST",
-                "header": [
-                  { "key": "Content-Type", "value": "application/json" }
-                ],
-                "body": {
-                  "mode": "graphql",
-                  "graphql": {
-                    "query": "mutation ForgotPassword($email: String!) {\n  forgotPassword(email: $email)\n}",
-                    "variables": "{\n  \"email\": \"{{userEmail}}\"\n}"
-                  }
-                },
-                "url": {
-                  "raw": "{{baseUrl}}/graphql",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["graphql"]
-                },
-                "description": "**STUB** — Not yet implemented. Will send a password reset email."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
-                      "const json = pm.response.json();",
-                      "pm.test(\"Returns true (stub)\", () => pm.expect(json.data.forgotPassword).to.be.true);"
-                    ]
-                  }
-                }
-              ]
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
             },
+            "description": "Use this INSTEAD of Accept Challenge to test the decline flow. Run Send Challenge first to get a fresh PENDING bet."
+          },
+          "event": [
             {
-              "name": "Reset Password",
-              "request": {
-                "auth": { "type": "noauth" },
-                "method": "POST",
-                "header": [
-                  { "key": "Content-Type", "value": "application/json" }
-                ],
-                "body": {
-                  "mode": "graphql",
-                  "graphql": {
-                    "query": "mutation ResetPassword($input: ResetPasswordInput!) {\n  resetPassword(input: $input)\n}",
-                    "variables": "{\n  \"input\": {\n    \"token\": \"replace-with-reset-token\",\n    \"newPassword\": \"NewPass123!\"\n  }\n}"
-                  }
-                },
-                "url": {
-                  "raw": "{{baseUrl}}/graphql",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["graphql"]
-                },
-                "description": "**STUB** — Not yet implemented. Token would be from the password reset email link."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
-                      "const json = pm.response.json();",
-                      "pm.test(\"Returns true (stub)\", () => pm.expect(json.data.resetPassword).to.be.true);"
-                    ]
-                  }
-                }
-              ]
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Returns true\", () => pm.expect(json.data.declineChallenge).to.be.true);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "Auth Utilities",
+      "description": "Standalone auth operations. These are not part of the main test flow.",
+      "item": [
+        {
+          "name": "View My Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query Me {\n  me {\n    id\n    email\n    username\n    firstName\n    lastName\n    points\n    emailVerified\n    isActive\n    lastLogin\n    createdAt\n  }\n}",
+                "variables": ""
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Returned user\", () => pm.expect(json.data.me).to.not.be.null);",
+                  "pm.test(\"Has points field\", () => pm.expect(json.data.me.points).to.be.a('number'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as Challenger",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation Login($input: LoginInput!) {\n  login(input: $input) {\n    accessToken\n    refreshToken\n    user { id email username points }\n  }\n}",
+                "variables": "{\n  \"input\": {\n    \"email\": \"replace@with.challenger.email\",\n    \"password\": \"Test123!\"\n  }\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Use this if your challengerToken expired. Replace the email with the Challenger's email from the signup response."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "if (json.data && json.data.login) {",
+                  "  pm.collectionVariables.set('challengerToken', json.data.login.accessToken);",
+                  "  pm.collectionVariables.set('challengerRefreshToken', json.data.login.refreshToken);",
+                  "  pm.collectionVariables.set('challengerId', json.data.login.user.id);",
+                  "  console.log('Re-logged in as Challenger:', json.data.login.user.username);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as Challengee",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation Login($input: LoginInput!) {\n  login(input: $input) {\n    accessToken\n    refreshToken\n    user { id email username points }\n  }\n}",
+                "variables": "{\n  \"input\": {\n    \"email\": \"replace@with.challengee.email\",\n    \"password\": \"Test123!\"\n  }\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Use this if your challengeeToken expired. Replace the email with the Challengee's email from the signup response."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "if (json.data && json.data.login) {",
+                  "  pm.collectionVariables.set('challengeeToken', json.data.login.accessToken);",
+                  "  pm.collectionVariables.set('challengerRefreshToken', json.data.login.refreshToken);",
+                  "  pm.collectionVariables.set('challengeeId', json.data.login.user.id);",
+                  "  console.log('Re-logged in as Challengee:', json.data.login.user.username);",
+                  "}"
+                ]
+              }
             }
           ]
         }
