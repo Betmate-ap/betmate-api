@@ -8,20 +8,29 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique @db.VarChar(255)
-  username    String   @unique @db.VarChar(50)
-  firstName   String   @db.VarChar(100)
-  lastName    String   @db.VarChar(100)
-  avatar      String?  @db.VarChar(500)
-  password      String?  @db.VarChar(100) 
-  googleId      String?  @unique @db.VarChar(100)
-  emailVerified Boolean  @default(false)
+  id            String    @id @default(cuid())
+  email         String    @unique @db.VarChar(255)
+  username      String    @unique @db.VarChar(50)
+  firstName     String    @db.VarChar(100)
+  lastName      String    @db.VarChar(100)
+  avatar        String?   @db.VarChar(500)
+  password      String?   @db.VarChar(100)
+  googleId      String?   @unique @db.VarChar(100)
+  emailVerified Boolean   @default(false)
+  points        Int       @default(0)
   lastLogin     DateTime?
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  refreshTokens RefreshToken[]
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  refreshTokens          RefreshToken[]
+  sentFriendRequests     Friendship[]   @relation("FriendshipRequester")
+  receivedFriendRequests Friendship[]   @relation("FriendshipReceiver")
+  sentBets               Bet[]          @relation("BetChallenger")
+  receivedBets           Bet[]          @relation("BetChallengee")
+  tossWonBets            Bet[]          @relation("BetTossWinner")
+  wonBets                Bet[]          @relation("BetWinner")
+
   @@map("users")
 }
 
@@ -31,6 +40,96 @@ model RefreshToken {
   userId    String
   expiresAt DateTime
   createdAt DateTime @default(now())
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@map("refresh_tokens")
+}
+
+// ─── Betmates (Friends) ───────────────────────────────────────────────────────
+
+model Friendship {
+  id          String           @id @default(cuid())
+  requesterId String
+  receiverId  String
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  requester User @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  receiver  User @relation("FriendshipReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, receiverId])
+  @@map("friendships")
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
+// ─── Matches ─────────────────────────────────────────────────────────────────
+
+model Match {
+  id          String      @id @default(cuid())
+  externalId  String      @unique
+  team1       String      @db.VarChar(100)
+  team2       String      @db.VarChar(100)
+  scheduledAt DateTime
+  venue       String?     @db.VarChar(200)
+  tournament  String      @default("IPL") @db.VarChar(100)
+  status      MatchStatus @default(UPCOMING)
+  winnerTeam  String?     @db.VarChar(100)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  bets Bet[]
+
+  @@map("matches")
+}
+
+enum MatchStatus {
+  UPCOMING
+  LIVE
+  COMPLETED
+  CANCELLED
+  POSTPONED
+}
+
+// ─── Bets ─────────────────────────────────────────────────────────────────────
+
+model Bet {
+  id             String    @id @default(cuid())
+  matchId        String
+  challengerId   String
+  challengeeId   String
+  tossWinnerId   String?                    // set when toss is performed (either party flips)
+  tossDoneAt     DateTime?                  // used to compute T-2h and T-1h windows
+  challengerPick String?   @db.VarChar(100) // set AFTER toss winner picks, not at challenge time
+  challengeePick String?   @db.VarChar(100) // auto-assigned the remaining team when pick is made
+  status         BetStatus @default(PENDING)
+  pointsStake    Int       @default(10)
+  winnerId       String?                    // set when match completes and bet resolves
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  match      Match @relation(fields: [matchId], references: [id])
+  challenger User  @relation("BetChallenger", fields: [challengerId], references: [id])
+  challengee User  @relation("BetChallengee", fields: [challengeeId], references: [id])
+  tossWinner User? @relation("BetTossWinner", fields: [tossWinnerId], references: [id])
+  winner     User? @relation("BetWinner", fields: [winnerId], references: [id])
+
+  @@unique([matchId, challengerId, challengeeId])
+  @@map("bets")
+}
+
+enum BetStatus {
+  PENDING      // challenge sent, waiting for challengee to accept
+  ACCEPTED     // accepted, either party can now flip the coin
+  TOSS_DONE    // toss done, toss winner has priority to pick team until T-2h
+  TEAMS_LOCKED // teams assigned, waiting for match result
+  COMPLETED    // match done, points awarded to winner
+  DECLINED     // challengee declined the challenge
+  EXPIRED      // users let it die — challenge never accepted OR teams never picked by T-1h
+  CANCELLED    // match itself was officially cancelled externally (rain, postponement, etc.)
 }
