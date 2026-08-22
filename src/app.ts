@@ -194,11 +194,9 @@ export async function createApp() {
         );
         res.json(result);
       } catch (err) {
-        res
-          .status(400)
-          .json({
-            error: err instanceof Error ? err.message : "Unknown error",
-          });
+        res.status(400).json({
+          error: err instanceof Error ? err.message : "Unknown error",
+        });
       }
     });
   }
