@@ -20,6 +20,7 @@ import { createComplexityLimitRule } from "graphql-validation-complexity";
 import { loadContractsSDL } from "./graphql/loadSchema";
 import { resolvers } from "./graphql/resolvers";
 import { prisma } from "./lib/prisma";
+import { BetService } from "./services/betService";
 import { getUserFromToken, extractTokenFromRequest } from "./lib/auth";
 import { logger } from "./lib/logger";
 import { config } from "./lib/config";
@@ -178,6 +179,27 @@ export async function createApp() {
           });
 
       res.status(existing ? 200 : 201).json(match);
+    });
+
+    app.post("/dev/resolve-match", async (req, res) => {
+      const { matchId, winnerTeam } = req.body ?? {};
+      if (!matchId) {
+        res.status(400).json({ error: "matchId is required" });
+        return;
+      }
+      try {
+        const result = await new BetService(prisma).resolveMatch(
+          matchId,
+          winnerTeam ?? null,
+        );
+        res.json(result);
+      } catch (err) {
+        res
+          .status(400)
+          .json({
+            error: err instanceof Error ? err.message : "Unknown error",
+          });
+      }
     });
   }
 
