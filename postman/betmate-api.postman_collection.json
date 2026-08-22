@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "name": "BetMate API",
-    "description": "Run requests top to bottom in order. Two accounts are used: Challenger (sends bets) and Challengee (receives bets). Tokens and IDs are captured automatically — you never need to copy-paste anything.\n\nPrerequisite before testing bets: seed a match via Prisma Studio (npx prisma studio) with status UPCOMING and scheduledAt at least 4 hours from now.",
+    "description": "Run requests top to bottom in order. Two accounts are used: Challenger (sends bets) and Challengee (receives bets). Tokens and IDs are captured automatically — you never need to copy-paste anything.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -12,6 +12,7 @@
     ]
   },
   "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000", "type": "string" },
     { "key": "challengerToken", "value": "", "type": "string" },
     { "key": "challengerRefreshToken", "value": "", "type": "string" },
     { "key": "challengerId", "value": "", "type": "string" },
@@ -31,7 +32,7 @@
       "name": "Health",
       "item": [
         {
-          "name": "Server Health",
+          "name": "1. Server Health",
           "request": {
             "auth": { "type": "noauth" },
             "method": "GET",
@@ -56,7 +57,7 @@
           ]
         },
         {
-          "name": "Database Health",
+          "name": "2. Database Health",
           "request": {
             "auth": { "type": "noauth" },
             "method": "GET",
@@ -82,7 +83,7 @@
           ]
         },
         {
-          "name": "GraphQL Ping",
+          "name": "3. GraphQL Ping",
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
@@ -119,7 +120,7 @@
       "description": "Run both requests in order. Challenger = the user who sends challenges. Challengee = the user who receives them. All tokens are saved automatically.",
       "item": [
         {
-          "name": "Create Challenger Account",
+          "name": "1. Create Challenger Account",
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
@@ -159,7 +160,7 @@
           ]
         },
         {
-          "name": "Create Challengee Account",
+          "name": "2. Create Challengee Account",
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
@@ -190,7 +191,7 @@
                   "pm.test(\"Got access token\", () => pm.expect(json.data.signup.accessToken).to.be.a('string').and.not.empty);",
                   "const { accessToken, refreshToken, user } = json.data.signup;",
                   "pm.collectionVariables.set('challengeeToken', accessToken);",
-                  "pm.collectionVariables.set('challengerRefreshToken', refreshToken);",
+                  "pm.collectionVariables.set('challengeeRefreshToken', refreshToken);",
                   "pm.collectionVariables.set('challengeeId', user.id);",
                   "console.log('Challengee created:', user.username, '| id:', user.id);"
                 ]
@@ -206,13 +207,10 @@
       "description": "Challenger sends a friend request. Challengee accepts it. After this they can challenge each other on matches.",
       "item": [
         {
-          "name": "Send Friend Request",
+          "name": "1. Send Friend Request",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "graphql",
               "graphql": {
@@ -245,7 +243,7 @@
           ]
         },
         {
-          "name": "Accept Friend Request",
+          "name": "2. Accept Friend Request",
           "request": {
             "auth": {
               "type": "bearer",
@@ -290,13 +288,10 @@
           ]
         },
         {
-          "name": "View Betmates List",
+          "name": "3. View Betmates List",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "graphql",
               "graphql": {
@@ -330,13 +325,10 @@
           ]
         },
         {
-          "name": "Search Users",
+          "name": "4. Search Users",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "graphql",
               "graphql": {
@@ -370,11 +362,11 @@
     },
 
     {
-      "name": "3.Get a Match",
+      "name": "3. Get a Match",
       "description": "Run Create Test Match first, then Get Upcoming Matches. The create request only works in local dev and is blocked in production.",
       "item": [
         {
-          "name": "Create Test Match",
+          "name": "1. Create Test Match",
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
@@ -388,7 +380,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["dev", "create-match"]
             },
-            "description": "Creates a test match scheduled 5 hours from now. Only works in local dev. Change hoursFromNow to any value above 2 to keep the challenge window open. Saves matchId, team1, team2 automatically."
+            "description": "Creates a test match scheduled 5 hours from now. Only works in local dev. Change hoursFromNow to any value above 2. Saves matchId, team1, team2 automatically."
           },
           "event": [
             {
@@ -412,13 +404,10 @@
           ]
         },
         {
-          "name": "Get Upcoming Matches",
+          "name": "2. Get Upcoming Matches",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "graphql",
               "graphql": {
@@ -431,7 +420,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["graphql"]
             },
-            "description": "Saves matchId, team1, and team2 automatically from the first result. These are used in all bet requests."
+            "description": "Saves matchId, team1, and team2 from the first result. These are used in all bet requests."
           },
           "event": [
             {
@@ -444,7 +433,7 @@
                   "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
                   "pm.test(\"Has upcoming matches\", () => {",
                   "  pm.expect(json.data.matches).to.be.an('array');",
-                  "  pm.expect(json.data.matches.length).to.be.above(0, 'No upcoming matches found. Seed one via Prisma Studio first.');",
+                  "  pm.expect(json.data.matches.length).to.be.above(0, 'No upcoming matches found.');",
                   "});",
                   "if (json.data.matches.length > 0) {",
                   "  const m = json.data.matches[0];",
@@ -460,13 +449,10 @@
           ]
         },
         {
-          "name": "Get Match Details",
+          "name": "3. Get Match Details",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "graphql",
               "graphql": {
@@ -503,13 +489,10 @@
       "description": "The complete bet lifecycle from challenge to team lock. Run every request in this folder top to bottom without skipping any.",
       "item": [
         {
-          "name": "Send Challenge",
+          "name": "1. Send Challenge",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "graphql",
               "graphql": {
@@ -543,7 +526,7 @@
           ]
         },
         {
-          "name": "Challengee Views Incoming Challenge",
+          "name": "2. Challengee Views Incoming Challenge",
           "request": {
             "auth": {
               "type": "bearer",
@@ -588,7 +571,7 @@
           ]
         },
         {
-          "name": "Accept Challenge",
+          "name": "3. Accept Challenge",
           "request": {
             "auth": {
               "type": "bearer",
@@ -633,13 +616,10 @@
           ]
         },
         {
-          "name": "Flip Coin",
+          "name": "4. Flip Coin",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "graphql",
               "graphql": {
@@ -652,7 +632,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["graphql"]
             },
-            "description": "Random 50/50 toss. Saves tossWinnerId and tossWinnerToken automatically. The next request (Pick Team) uses the winner's token without any manual steps."
+            "description": "Random 50/50 toss. Saves tossWinnerId and tossWinnerToken automatically. The next request uses the winner's token with no manual steps."
           },
           "event": [
             {
@@ -682,7 +662,7 @@
           ]
         },
         {
-          "name": "Pick Team",
+          "name": "5. Pick Team",
           "request": {
             "auth": {
               "type": "bearer",
@@ -708,7 +688,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["graphql"]
             },
-            "description": "Runs automatically as the toss winner (token set by Flip Coin). Picks team1 from the match. The other team is automatically assigned to the opponent. Status moves to TEAMS_LOCKED."
+            "description": "Runs automatically as the toss winner. Picks team1. The other team is automatically assigned to the opponent. Status moves to TEAMS_LOCKED."
           },
           "event": [
             {
@@ -731,13 +711,10 @@
           ]
         },
         {
-          "name": "Challenger Views All Bets",
+          "name": "6. View All Bets",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "graphql",
               "graphql": {
@@ -767,13 +744,10 @@
           ]
         },
         {
-          "name": "View Leaderboard",
+          "name": "7. View Leaderboard",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "graphql",
               "graphql": {
@@ -786,7 +760,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["graphql"]
             },
-            "description": "Shows you and all your Betmates ranked by total points. Both accounts will appear here at 0 points (no completed bets yet)."
+            "description": "Shows you and all your Betmates ranked by total points. Both accounts will show 0 points here (no completed bets yet). Points update in section 5."
           },
           "event": [
             {
@@ -807,13 +781,10 @@
           ]
         },
         {
-          "name": "View Head to Head",
+          "name": "8. View Head to Head",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "graphql",
               "graphql": {
@@ -826,7 +797,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["graphql"]
             },
-            "description": "Full history between Challenger and Challengee. myWins and theirWins only count COMPLETED bets so they will show 0 until a match finishes."
+            "description": "Full history between Challenger and Challengee. myWins and theirWins only count COMPLETED bets so they will show 0 until section 5 is run."
           },
           "event": [
             {
@@ -849,17 +820,174 @@
     },
 
     {
-      "name": "5. Error Cases",
-      "description": "These verify the API rejects invalid actions. Each request expects a GraphQL error in the response. Tests go green when an error IS returned.",
+      "name": "5. Resolve and Check Results",
+      "description": "Simulate match completion and verify points are awarded. Run after completing section 4. The Resolve Match request only works in local dev.",
       "item": [
         {
-          "name": "Flip Before Acceptance (expect error)",
+          "name": "1. Resolve Match",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"matchId\": \"{{matchId}}\",\n  \"winnerTeam\": \"{{team1}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/dev/resolve-match",
+              "host": ["{{baseUrl}}"],
+              "path": ["dev", "resolve-match"]
+            },
+            "description": "Declares team1 as the match winner. TEAMS_LOCKED bets are settled: team1 picker gets +10, other gets -10. Change winnerTeam to {{team2}} to flip the result. Only works in local dev."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const result = pm.response.json();",
+                  "pm.test(\"No error\", () => pm.expect(result.error).to.be.undefined);",
+                  "console.log('Settled:', result.settled, '| Cancelled:', result.cancelled, '| Expired:', result.expired);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Check Bet is Completed",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query MyBets($status: BetStatus) {\n  myBets(status: $status) {\n    id\n    status\n    challengerPick\n    challengeePick\n    pointsStake\n    challenger { id username points }\n    challengee { id username points }\n    winner { id username }\n    match { team1 team2 status winnerTeam }\n  }\n}",
+                "variables": "{\n  \"status\": \"COMPLETED\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Verify the bet moved to COMPLETED and the winner field is set."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Has completed bets\", () => pm.expect(json.data.myBets.length).to.be.above(0));",
+                  "if (json.data.myBets.length > 0) {",
+                  "  const bet = json.data.myBets[0];",
+                  "  pm.test(\"Status is COMPLETED\", () => pm.expect(bet.status).to.equal('COMPLETED'));",
+                  "  pm.test(\"Winner is set\", () => pm.expect(bet.winner).to.not.be.null);",
+                  "  console.log('Winner:', bet.winner.username);",
+                  "  console.log(bet.challenger.username + ' picked ' + bet.challengerPick + ' (' + bet.challenger.points + 'pts)');",
+                  "  console.log(bet.challengee.username + ' picked ' + bet.challengeePick + ' (' + bet.challengee.points + 'pts)');",
+                  "  console.log('Match winner team:', bet.match.winnerTeam);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. View Updated Leaderboard",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query Leaderboard {\n  leaderboard {\n    rank\n    points\n    betsWon\n    betsLost\n    totalBets\n    user { id username }\n  }\n}",
+                "variables": ""
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Should now show +10 and -10 instead of 0 0."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "const entries = json.data.leaderboard;",
+                  "pm.test(\"Points are not all zero\", () => {",
+                  "  const nonZero = entries.some(e => e.points !== 0);",
+                  "  pm.expect(nonZero).to.be.true;",
+                  "});",
+                  "entries.forEach(e => {",
+                  "  console.log('#' + e.rank, e.user.username, e.points + 'pts', e.betsWon + 'W', e.betsLost + 'L');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. View Updated Head to Head",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query HeadToHead($betmateId: ID!) {\n  headToHead(betmateId: $betmateId) {\n    betmate { id username points }\n    myWins\n    theirWins\n    netPoints\n    bets {\n      id\n      status\n      challengerPick\n      challengeePick\n      winner { username }\n      match { team1 team2 winnerTeam }\n    }\n  }\n}",
+                "variables": "{\n  \"betmateId\": \"{{challengeeId}}\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "myWins and theirWins should now show the result of the completed bet."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "const h = json.data.headToHead;",
+                  "pm.test(\"Has betmate\", () => pm.expect(h.betmate).to.exist);",
+                  "pm.test(\"Win count is recorded\", () => pm.expect(h.myWins + h.theirWins).to.be.above(0));",
+                  "console.log('vs', h.betmate.username, '| You:', h.myWins, 'W | Them:', h.theirWins, 'W | Net:', h.netPoints, 'pts');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "6. Error Cases",
+      "description": "These verify the API rejects invalid actions. Each request expects a GraphQL error. Tests go green when an error IS returned.",
+      "item": [
+        {
+          "name": "1. Flip Before Acceptance (expect error)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "graphql",
               "graphql": {
@@ -872,7 +1000,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["graphql"]
             },
-            "description": "To test this properly: first run Send Challenge, then immediately run this without running Accept Challenge. Should return INVALID_STATUS error."
+            "description": "Run Send Challenge first, then immediately run this without running Accept Challenge. Should return INVALID_STATUS."
           },
           "event": [
             {
@@ -890,7 +1018,7 @@
           ]
         },
         {
-          "name": "Toss Loser Picks Team (expect error)",
+          "name": "2. Toss Loser Picks Team (expect error)",
           "request": {
             "method": "POST",
             "header": [
@@ -913,7 +1041,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["graphql"]
             },
-            "description": "After flipping the coin, check who LOST the toss from the Flip Coin response. Run this as the loser before T-2h. Should return NOT_TOSS_WINNER error."
+            "description": "After flipping the coin, run this as the toss loser before T-2h. Should return NOT_TOSS_WINNER."
           },
           "event": [
             {
@@ -931,13 +1059,10 @@
           ]
         },
         {
-          "name": "Challenge a Non Betmate (expect error)",
+          "name": "3. Challenge a Non Betmate (expect error)",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "graphql",
               "graphql": {
@@ -950,7 +1075,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["graphql"]
             },
-            "description": "Tries to challenge a user who is not a Betmate. Should return NOT_BETMATES error."
+            "description": "Tries to challenge a user who is not a Betmate. Should return NOT_BETMATES."
           },
           "event": [
             {
@@ -967,7 +1092,7 @@
           ]
         },
         {
-          "name": "Unauthenticated Request (expect error)",
+          "name": "4. Unauthenticated Request (expect error)",
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
@@ -984,7 +1109,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["graphql"]
             },
-            "description": "No Authorization header. Should return UNAUTHENTICATED error."
+            "description": "No Authorization header. Should return UNAUTHENTICATED."
           },
           "event": [
             {
@@ -1002,7 +1127,7 @@
           ]
         },
         {
-          "name": "Decline Challenge",
+          "name": "5. Decline Challenge",
           "request": {
             "auth": {
               "type": "bearer",
@@ -1050,16 +1175,13 @@
 
     {
       "name": "Auth Utilities",
-      "description": "Standalone auth operations. These are not part of the main test flow.",
+      "description": "Standalone auth operations. Not part of the main test flow — use these if tokens expire.",
       "item": [
         {
-          "name": "View My Profile",
+          "name": "1. View My Profile",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{challengerToken}}" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "graphql",
               "graphql": {
@@ -1090,7 +1212,7 @@
           ]
         },
         {
-          "name": "Login as Challenger",
+          "name": "2. Login as Challenger",
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
@@ -1107,7 +1229,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["graphql"]
             },
-            "description": "Use this if your challengerToken expired. Replace the email with the Challenger's email from the signup response."
+            "description": "Use this if your challengerToken expired. Replace the email with the Challenger's email from signup."
           },
           "event": [
             {
@@ -1130,7 +1252,7 @@
           ]
         },
         {
-          "name": "Login as Challengee",
+          "name": "3. Login as Challengee",
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
@@ -1147,7 +1269,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["graphql"]
             },
-            "description": "Use this if your challengeeToken expired. Replace the email with the Challengee's email from the signup response."
+            "description": "Use this if your challengeeToken expired. Replace the email with the Challengee's email from signup."
           },
           "event": [
             {
@@ -1160,7 +1282,7 @@
                   "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
                   "if (json.data && json.data.login) {",
                   "  pm.collectionVariables.set('challengeeToken', json.data.login.accessToken);",
-                  "  pm.collectionVariables.set('challengerRefreshToken', json.data.login.refreshToken);",
+                  "  pm.collectionVariables.set('challengeeRefreshToken', json.data.login.refreshToken);",
                   "  pm.collectionVariables.set('challengeeId', json.data.login.user.id);",
                   "  console.log('Re-logged in as Challengee:', json.data.login.user.username);",
                   "}"
