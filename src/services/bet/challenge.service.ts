@@ -5,14 +5,16 @@ import {
   MatchStatus,
 } from "@prisma/client";
 import { GraphQLError } from "graphql";
+import {
+  POINTS_STAKE,
+  TEAM_PICK_EXCLUSIVE_WINDOW_HOURS,
+  TEAM_PICK_DEADLINE_HOURS,
+} from "../../constants/bet";
 
-const POINTS_STAKE = 10;
-const TEAM_PICK_EXCLUSIVE_WINDOW_HOURS = 2; // toss winner exclusive until T-2h
-const TEAM_PICK_DEADLINE_HOURS = 1; // both lose access at T-1h → auto-expire
-
-export class BetService {
+export class ChallengeService {
   constructor(private prisma: PrismaClient) {}
 
+  /** Creates a new bet challenge between two Betmates for an upcoming match. */
   async sendChallenge(
     challengerId: string,
     matchId: string,
@@ -24,7 +26,6 @@ export class BetService {
       });
     }
 
-    // Verify match exists and is upcoming
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },
     });
@@ -41,7 +42,6 @@ export class BetService {
       });
     }
 
-    // Reject challenges sent too close to match start (< 2h)
     const twoHoursFromNow = new Date(
       Date.now() + TEAM_PICK_EXCLUSIVE_WINDOW_HOURS * 60 * 60 * 1000,
     );
@@ -51,7 +51,6 @@ export class BetService {
       });
     }
 
-    // Verify they are accepted Betmates
     const friendship = await this.prisma.friendship.findFirst({
       where: {
         OR: [
@@ -109,6 +108,7 @@ export class BetService {
     });
   }
 
+  /** Accepts a pending challenge. Auto-expires if match starts within 2 hours. */
   async acceptChallenge(betId: string, currentUserId: string) {
     const bet = await this.findBetOrThrow(betId);
 
@@ -124,7 +124,6 @@ export class BetService {
       });
     }
 
-    // Check match hasn't become too close
     const twoHoursFromNow = new Date(
       Date.now() + TEAM_PICK_EXCLUSIVE_WINDOW_HOURS * 60 * 60 * 1000,
     );
@@ -151,6 +150,7 @@ export class BetService {
     });
   }
 
+  /** Declines a pending challenge. */
   async declineChallenge(betId: string, currentUserId: string) {
     const bet = await this.findBetOrThrow(betId);
 
@@ -173,6 +173,30 @@ export class BetService {
     return true;
   }
 
+  /** Cancels a pending challenge. Only the challenger can cancel. */
+  async cancelChallenge(betId: string, currentUserId: string) {
+    const bet = await this.findBetOrThrow(betId);
+
+    if (bet.challengerId !== currentUserId) {
+      throw new GraphQLError("Only the challenger can cancel a challenge", {
+        extensions: { code: "FORBIDDEN" },
+      });
+    }
+
+    if (bet.status !== BetStatus.PENDING) {
+      throw new GraphQLError("Only pending challenges can be cancelled", {
+        extensions: { code: "INVALID_STATUS" },
+      });
+    }
+
+    await this.prisma.bet.update({
+      where: { id: betId },
+      data: { status: BetStatus.CANCELLED },
+    });
+    return true;
+  }
+
+  /** Randomly determines which player picks their team first. */
   async flipCoin(betId: string, currentUserId: string) {
     const bet = await this.findBetOrThrow(betId);
 
@@ -194,7 +218,6 @@ export class BetService {
       );
     }
 
-    // Random 50/50 toss between challenger and challengee
     const tossWinnerId =
       Math.random() < 0.5 ? bet.challengerId : bet.challengeeId;
 
@@ -215,6 +238,7 @@ export class BetService {
     });
   }
 
+  /** Locks in team picks for both players. The picker's opponent gets the other team automatically. */
   async selectTeam(betId: string, currentUserId: string, team: string) {
     const bet = await this.findBetOrThrow(betId);
 
@@ -233,7 +257,6 @@ export class BetService {
       });
     }
 
-    // Validate team is one of the two match teams
     const validTeams = [bet.match.team1, bet.match.team2];
     if (!validTeams.includes(team)) {
       throw new GraphQLError(`Team must be one of: ${validTeams.join(", ")}`, {
@@ -250,7 +273,6 @@ export class BetService {
       matchTime.getTime() - TEAM_PICK_EXCLUSIVE_WINDOW_HOURS * 60 * 60 * 1000,
     );
 
-    // After T-1h: nobody can pick
     if (now >= oneHourBefore) {
       await this.prisma.bet.update({
         where: { id: betId },
@@ -261,7 +283,6 @@ export class BetService {
       });
     }
 
-    // Before T-2h: only toss winner can pick
     if (now < twoHoursBefore && bet.tossWinnerId !== currentUserId) {
       throw new GraphQLError("Only the toss winner can pick a team right now", {
         extensions: { code: "NOT_TOSS_WINNER" },
@@ -271,16 +292,13 @@ export class BetService {
     // Both can pick from T-2h to T-1h — first write wins (DB unique constraint handles race)
     const otherTeam =
       team === bet.match.team1 ? bet.match.team2 : bet.match.team1;
-
     const isChallenger = bet.challengerId === currentUserId;
-    const challengerPick = isChallenger ? team : otherTeam;
-    const challengeePick = isChallenger ? otherTeam : team;
 
     return this.prisma.bet.update({
       where: { id: betId },
       data: {
-        challengerPick,
-        challengeePick,
+        challengerPick: isChallenger ? team : otherTeam,
+        challengeePick: isChallenger ? otherTeam : team,
         status: BetStatus.TEAMS_LOCKED,
       },
       include: {
@@ -293,29 +311,7 @@ export class BetService {
     });
   }
 
-  async cancelChallenge(betId: string, currentUserId: string) {
-    const bet = await this.findBetOrThrow(betId);
-
-    if (bet.challengerId !== currentUserId) {
-      throw new GraphQLError("Only the challenger can cancel a challenge", {
-        extensions: { code: "FORBIDDEN" },
-      });
-    }
-
-    if (bet.status !== BetStatus.PENDING) {
-      throw new GraphQLError("Only pending challenges can be cancelled", {
-        extensions: { code: "INVALID_STATUS" },
-      });
-    }
-
-    await this.prisma.bet.update({
-      where: { id: betId },
-      data: { status: BetStatus.CANCELLED },
-    });
-
-    return true;
-  }
-
+  /** Returns all bets the current user is a party to, optionally filtered by status. */
   async getMyBets(currentUserId: string, status?: BetStatus) {
     return this.prisma.bet.findMany({
       where: {
@@ -330,198 +326,6 @@ export class BetService {
         winner: true,
       },
       orderBy: { createdAt: "desc" },
-    });
-  }
-
-  async getHeadToHead(currentUserId: string, betmateId: string) {
-    const bets = await this.prisma.bet.findMany({
-      where: {
-        OR: [
-          { challengerId: currentUserId, challengeeId: betmateId },
-          { challengerId: betmateId, challengeeId: currentUserId },
-        ],
-        status: BetStatus.COMPLETED,
-      },
-      include: {
-        match: true,
-        challenger: true,
-        challengee: true,
-        tossWinner: true,
-        winner: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    const myWins = bets.filter((b) => b.winnerId === currentUserId).length;
-    const theirWins = bets.filter((b) => b.winnerId === betmateId).length;
-    const netPoints = (myWins - theirWins) * POINTS_STAKE;
-
-    const betmate = await this.prisma.user.findUnique({
-      where: { id: betmateId },
-    });
-    if (!betmate) {
-      throw new GraphQLError("Betmate not found", {
-        extensions: { code: "NOT_FOUND" },
-      });
-    }
-
-    return { betmate, myWins, theirWins, netPoints, bets };
-  }
-
-  async getLeaderboard(currentUserId: string) {
-    // Get all accepted betmates
-    const friendships = await this.prisma.friendship.findMany({
-      where: {
-        OR: [
-          { requesterId: currentUserId, status: FriendshipStatus.ACCEPTED },
-          { receiverId: currentUserId, status: FriendshipStatus.ACCEPTED },
-        ],
-      },
-      include: { requester: true, receiver: true },
-    });
-
-    const betmates = friendships.map((f) =>
-      f.requesterId === currentUserId ? f.receiver : f.requester,
-    );
-
-    const currentUser = await this.prisma.user.findUnique({
-      where: { id: currentUserId },
-    });
-    if (!currentUser)
-      throw new GraphQLError("User not found", {
-        extensions: { code: "NOT_FOUND" },
-      });
-
-    const allUsers = [currentUser, ...betmates];
-
-    // Get completed bet counts per user
-    const completedBets = await this.prisma.bet.findMany({
-      where: {
-        OR: [{ challengerId: currentUserId }, { challengeeId: currentUserId }],
-        status: BetStatus.COMPLETED,
-      },
-      select: { challengerId: true, challengeeId: true, winnerId: true },
-    });
-
-    const statsMap = new Map<
-      string,
-      { betsWon: number; betsLost: number; totalBets: number }
-    >();
-
-    for (const user of allUsers) {
-      const userBets = completedBets.filter(
-        (b) => b.challengerId === user.id || b.challengeeId === user.id,
-      );
-      statsMap.set(user.id, {
-        betsWon: userBets.filter((b) => b.winnerId === user.id).length,
-        betsLost: userBets.filter((b) => b.winnerId !== user.id).length,
-        totalBets: userBets.length,
-      });
-    }
-
-    return allUsers
-      .sort((a, b) => b.points - a.points)
-      .map((user, index) => ({
-        rank: index + 1,
-        user,
-        points: user.points,
-        ...(statsMap.get(user.id) ?? { betsWon: 0, betsLost: 0, totalBets: 0 }),
-      }));
-  }
-
-  async resolveMatch(matchId: string, winnerTeam: string | null) {
-    const match = await this.prisma.match.findUnique({
-      where: { id: matchId },
-    });
-
-    if (!match) {
-      throw new GraphQLError("Match not found", {
-        extensions: { code: "NOT_FOUND" },
-      });
-    }
-
-    if (
-      match.status === MatchStatus.COMPLETED ||
-      match.status === MatchStatus.CANCELLED
-    ) {
-      throw new GraphQLError("Match is already resolved", {
-        extensions: { code: "ALREADY_RESOLVED" },
-      });
-    }
-
-    if (
-      winnerTeam &&
-      winnerTeam !== match.team1 &&
-      winnerTeam !== match.team2
-    ) {
-      throw new GraphQLError(
-        `Winner must be "${match.team1}" or "${match.team2}"`,
-        { extensions: { code: "INVALID_TEAM" } },
-      );
-    }
-
-    return this.prisma.$transaction(async (tx) => {
-      const expiredResult = await tx.bet.updateMany({
-        where: {
-          matchId,
-          status: {
-            in: [BetStatus.PENDING, BetStatus.ACCEPTED, BetStatus.TOSS_DONE],
-          },
-        },
-        data: { status: BetStatus.EXPIRED },
-      });
-
-      if (!winnerTeam) {
-        const cancelledResult = await tx.bet.updateMany({
-          where: { matchId, status: BetStatus.TEAMS_LOCKED },
-          data: { status: BetStatus.CANCELLED },
-        });
-        await tx.match.update({
-          where: { id: matchId },
-          data: { status: MatchStatus.CANCELLED },
-        });
-        return {
-          settled: 0,
-          cancelled: cancelledResult.count,
-          expired: expiredResult.count,
-        };
-      }
-
-      const bets = await tx.bet.findMany({
-        where: { matchId, status: BetStatus.TEAMS_LOCKED },
-      });
-
-      for (const bet of bets) {
-        const challengerWon = bet.challengerPick === winnerTeam;
-        const winnerId = challengerWon ? bet.challengerId : bet.challengeeId;
-        const loserId = challengerWon ? bet.challengeeId : bet.challengerId;
-
-        await tx.bet.update({
-          where: { id: bet.id },
-          data: { status: BetStatus.COMPLETED, winnerId },
-        });
-
-        await tx.user.update({
-          where: { id: winnerId },
-          data: { points: { increment: POINTS_STAKE } },
-        });
-
-        await tx.user.update({
-          where: { id: loserId },
-          data: { points: { decrement: POINTS_STAKE } },
-        });
-      }
-
-      await tx.match.update({
-        where: { id: matchId },
-        data: { status: MatchStatus.COMPLETED, winnerTeam },
-      });
-
-      return {
-        settled: bets.length,
-        cancelled: 0,
-        expired: expiredResult.count,
-      };
     });
   }
 

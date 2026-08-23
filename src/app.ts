@@ -20,7 +20,7 @@ import { createComplexityLimitRule } from "graphql-validation-complexity";
 import { loadContractsSDL } from "./graphql/loadSchema";
 import { resolvers } from "./graphql/resolvers";
 import { prisma } from "./lib/prisma";
-import { BetService } from "./services/betService";
+import { ResolutionService } from "./services/bet/resolution.service";
 import { getUserFromToken, extractTokenFromRequest } from "./lib/auth";
 import { logger } from "./lib/logger";
 import { config } from "./lib/config";
@@ -188,7 +188,7 @@ export async function createApp() {
         return;
       }
       try {
-        const result = await new BetService(prisma).resolveMatch(
+        const result = await new ResolutionService(prisma).resolveMatch(
           matchId,
           winnerTeam ?? null,
         );

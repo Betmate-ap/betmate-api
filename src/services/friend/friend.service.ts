@@ -4,6 +4,7 @@ import { GraphQLError } from "graphql";
 export class FriendService {
   constructor(private prisma: PrismaClient) {}
 
+  /** Searches users by name or username, excluding blocked and inactive accounts. Returns up to 20 results. */
   async searchUsers(query: string, currentUserId: string) {
     if (!query || query.trim().length < 2) {
       throw new GraphQLError("Search query must be at least 2 characters", {
@@ -13,7 +14,6 @@ export class FriendService {
 
     const term = query.trim();
 
-    // Find all users blocked by or blocking the current user
     const blocks = await this.prisma.friendship.findMany({
       where: {
         OR: [
@@ -46,7 +46,6 @@ export class FriendService {
       take: 20,
     });
 
-    // Fetch friendship status between current user and each result
     const friendships = await this.prisma.friendship.findMany({
       where: {
         OR: [
@@ -76,6 +75,7 @@ export class FriendService {
     });
   }
 
+  /** Sends a Betmate request to another user. */
   async sendFriendRequest(requesterId: string, receiverId: string) {
     if (requesterId === receiverId) {
       throw new GraphQLError("You cannot add yourself as a Betmate", {
@@ -93,7 +93,6 @@ export class FriendService {
       });
     }
 
-    // Check for any existing friendship in either direction
     const existing = await this.prisma.friendship.findFirst({
       where: {
         OR: [
@@ -127,6 +126,7 @@ export class FriendService {
     });
   }
 
+  /** Accepts a pending Betmate request. Only the recipient can accept. */
   async acceptFriendRequest(friendshipId: string, currentUserId: string) {
     const friendship = await this.prisma.friendship.findUnique({
       where: { id: friendshipId },
@@ -158,6 +158,7 @@ export class FriendService {
     });
   }
 
+  /** Declines and removes a pending Betmate request. Only the recipient can decline. */
   async declineFriendRequest(friendshipId: string, currentUserId: string) {
     const friendship = await this.prisma.friendship.findUnique({
       where: { id: friendshipId },
@@ -188,6 +189,7 @@ export class FriendService {
     return true;
   }
 
+  /** Removes an existing Betmate relationship. */
   async removeBetmate(currentUserId: string, otherUserId: string) {
     const friendship = await this.prisma.friendship.findFirst({
       where: {
@@ -209,63 +211,7 @@ export class FriendService {
     return true;
   }
 
-  async blockUser(currentUserId: string, targetUserId: string) {
-    if (currentUserId === targetUserId) {
-      throw new GraphQLError("Cannot block yourself", {
-        extensions: { code: "INVALID_INPUT" },
-      });
-    }
-
-    const existing = await this.prisma.friendship.findFirst({
-      where: {
-        OR: [
-          { requesterId: currentUserId, receiverId: targetUserId },
-          { requesterId: targetUserId, receiverId: currentUserId },
-        ],
-      },
-    });
-
-    if (existing) {
-      return this.prisma.friendship.update({
-        where: { id: existing.id },
-        data: {
-          requesterId: currentUserId,
-          receiverId: targetUserId,
-          status: FriendshipStatus.BLOCKED,
-        },
-        include: { requester: true, receiver: true },
-      });
-    }
-
-    return this.prisma.friendship.create({
-      data: {
-        requesterId: currentUserId,
-        receiverId: targetUserId,
-        status: FriendshipStatus.BLOCKED,
-      },
-      include: { requester: true, receiver: true },
-    });
-  }
-
-  async unblockUser(currentUserId: string, targetUserId: string) {
-    const friendship = await this.prisma.friendship.findFirst({
-      where: {
-        requesterId: currentUserId,
-        receiverId: targetUserId,
-        status: FriendshipStatus.BLOCKED,
-      },
-    });
-
-    if (!friendship) {
-      throw new GraphQLError("No block found", {
-        extensions: { code: "NOT_FOUND" },
-      });
-    }
-
-    await this.prisma.friendship.delete({ where: { id: friendship.id } });
-    return true;
-  }
-
+  /** Returns all accepted Betmates of the current user. */
   async getMyBetmates(currentUserId: string) {
     const friendships = await this.prisma.friendship.findMany({
       where: {
@@ -282,6 +228,7 @@ export class FriendService {
     );
   }
 
+  /** Returns pending Betmate requests received by the current user. */
   async getPendingFriendRequests(currentUserId: string) {
     return this.prisma.friendship.findMany({
       where: { receiverId: currentUserId, status: FriendshipStatus.PENDING },
@@ -290,14 +237,7 @@ export class FriendService {
     });
   }
 
-  async getBlockedUsers(currentUserId: string) {
-    const blocks = await this.prisma.friendship.findMany({
-      where: { requesterId: currentUserId, status: FriendshipStatus.BLOCKED },
-      include: { receiver: true },
-    });
-    return blocks.map((b) => b.receiver);
-  }
-
+  /** Returns pending Betmate requests sent by the current user. */
   async getSentFriendRequests(currentUserId: string) {
     return this.prisma.friendship.findMany({
       where: { requesterId: currentUserId, status: FriendshipStatus.PENDING },

@@ -1,18 +1,19 @@
 import { MatchStatus, type PrismaClient } from "@prisma/client";
 import { logger } from "../../lib/logger";
-import { BetService } from "../betService";
+import { ResolutionService } from "../bet/resolution.service";
 import type { CricketProvider, ExternalMatch } from "./types";
 
 export class CricketSyncService {
-  private readonly betService: BetService;
+  private readonly resolutionService: ResolutionService;
 
   constructor(
     private readonly provider: CricketProvider,
     private readonly prisma: PrismaClient,
   ) {
-    this.betService = new BetService(prisma);
+    this.resolutionService = new ResolutionService(prisma);
   }
 
+  /** Fetches latest match data from the provider and syncs it to the database. */
   async sync(): Promise<void> {
     let matches: ExternalMatch[];
     try {
@@ -41,7 +42,6 @@ export class CricketSyncService {
       where: { externalId: m.externalId },
     });
 
-    // Already fully resolved — nothing left to do
     if (
       existing?.status === MatchStatus.COMPLETED ||
       existing?.status === MatchStatus.CANCELLED
@@ -55,7 +55,6 @@ export class CricketSyncService {
     }
 
     if (!existing) {
-      // New upcoming match — create it
       await this.prisma.match.create({
         data: {
           externalId: m.externalId,
@@ -106,7 +105,7 @@ export class CricketSyncService {
     }
 
     const winner = parseWinner(m.status, [m.team1, m.team2]);
-    const result = await this.betService.resolveMatch(matchId, winner);
+    const result = await this.resolutionService.resolveMatch(matchId, winner);
     logger.info(
       { externalId: m.externalId, winner, ...result },
       "cricket-sync: match resolved",

@@ -1,0 +1,3 @@
+export const POINTS_STAKE = 10;
+export const TEAM_PICK_EXCLUSIVE_WINDOW_HOURS = 2;
+export const TEAM_PICK_DEADLINE_HOURS = 1;

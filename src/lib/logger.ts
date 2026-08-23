@@ -4,7 +4,6 @@ const isDevelopment = process.env.NODE_ENV === "development";
 const isProduction = process.env.NODE_ENV === "production";
 const logLevel = process.env.LOG_LEVEL || (isProduction ? "warn" : "info");
 
-// Production logging configuration
 const productionConfig = {
   level: logLevel,
   formatters: {
@@ -24,7 +23,6 @@ const productionConfig = {
   },
 };
 
-// Development logging configuration
 const developmentConfig = {
   level: logLevel,
   transport: {
@@ -41,7 +39,6 @@ export const logger = pino(
   isDevelopment ? developmentConfig : productionConfig,
 );
 
-// Add structured logging helpers
 export const createRequestLogger = (requestId: string) => {
   return logger.child({ requestId });
 };

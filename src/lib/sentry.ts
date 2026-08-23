@@ -15,9 +15,7 @@ export function initSentry() {
     dsn,
     environment,
     integrations: [nodeProfilingIntegration(), Sentry.httpIntegration()],
-    // Performance monitoring
     tracesSampleRate: environment === "production" ? 0.1 : 1.0,
-    // Profiling
     profilesSampleRate: environment === "production" ? 0.1 : 1.0,
     // Don't capture console.log as breadcrumbs (we have pino)
     beforeBreadcrumb(breadcrumb) {
