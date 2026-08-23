@@ -1,6 +1,5 @@
 import { logger } from "./logger";
 
-// Performance monitoring
 export class PerformanceMonitor {
   private static instance: PerformanceMonitor;
   private metrics: Map<string, number[]> = new Map();
@@ -33,7 +32,6 @@ export class PerformanceMonitor {
       values.shift();
     }
 
-    // Log slow operations
     if (metric.includes("graphql") && value > 1000) {
       logger.warn(
         { metric, duration: value },
@@ -77,7 +75,6 @@ export class PerformanceMonitor {
   }
 }
 
-// Health check utilities
 export class HealthChecker {
   static async checkDatabase(): Promise<{
     healthy: boolean;
@@ -136,7 +133,6 @@ export class HealthChecker {
   }
 }
 
-// Error tracking
 export class ErrorTracker {
   static trackError(error: Error, context?: Record<string, unknown>): void {
     logger.error(
@@ -150,11 +146,6 @@ export class ErrorTracker {
       },
       "Error tracked",
     );
-
-    // In production, you might want to send to external service
-    if (process.env.NODE_ENV === "production") {
-      // Example: Send to Sentry, DataDog, etc.
-    }
   }
 
   static trackGraphQLError(
@@ -170,10 +161,8 @@ export class ErrorTracker {
   }
 }
 
-// Initialize monitoring
 const monitor = PerformanceMonitor.getInstance();
 
-// Log metrics summary every 5 minutes in production
 if (process.env.NODE_ENV === "production") {
   setInterval(
     () => {
