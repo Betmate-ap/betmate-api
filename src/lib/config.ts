@@ -4,9 +4,12 @@ type AppConfig = {
   DATABASE_URL: string;
   JWT_SECRET: string;
   CORS_ORIGIN: string;
-  COOKIE_SECURE: boolean; // true in prod
+  COOKIE_SECURE: boolean;
   COOKIE_SAMESITE: "lax" | "none";
-  SENTRY_DSN?: string; // optional
+  SENTRY_DSN?: string;
+  // Required in production/staging — mock provider is used in development
+  CRICKET_API_KEY?: string;
+  CRICKET_IPL_SERIES_ID?: string;
 };
 
 function requireEnv(name: string): string {
@@ -44,8 +47,20 @@ const COOKIE_SAMESITE: AppConfig["COOKIE_SAMESITE"] = COOKIE_SECURE
   ? "none"
   : "lax";
 
-// Optional Sentry DSN
 const SENTRY_DSN = process.env.SENTRY_DSN;
+
+const CRICKET_API_KEY = process.env.CRICKET_API_KEY;
+const CRICKET_IPL_SERIES_ID = process.env.CRICKET_IPL_SERIES_ID;
+
+// Warn (don't throw) in prod if cricket keys are missing — sync will be skipped
+if (
+  (NODE_ENV === "production" || NODE_ENV === "staging") &&
+  (!CRICKET_API_KEY || !CRICKET_IPL_SERIES_ID)
+) {
+  process.stderr.write(
+    "[config] WARNING: CRICKET_API_KEY or CRICKET_IPL_SERIES_ID missing — cricket sync disabled\n",
+  );
+}
 
 export const config: AppConfig = {
   NODE_ENV,
@@ -56,4 +71,6 @@ export const config: AppConfig = {
   COOKIE_SECURE,
   COOKIE_SAMESITE,
   SENTRY_DSN,
+  CRICKET_API_KEY,
+  CRICKET_IPL_SERIES_ID,
 };

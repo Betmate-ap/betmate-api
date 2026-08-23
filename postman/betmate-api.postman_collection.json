@@ -362,25 +362,27 @@
     },
 
     {
-      "name": "3. Get a Match",
-      "description": "Run Create Test Match first, then Get Upcoming Matches. The create request only works in local dev and is blocked in production.",
+      "name": "Cricket Sync",
+      "description": "Verify the mock cricket scheduler is working. The scheduler runs automatically on server startup (no action needed). These requests just read what it created. Expected: 2 UPCOMING, 1 LIVE, 2 COMPLETED, 1 CANCELLED.",
       "item": [
         {
-          "name": "1. Create Test Match",
+          "name": "1. All Synced Matches",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"team1\": \"Mumbai Indians\",\n  \"team2\": \"Chennai Super Kings\",\n  \"tournament\": \"IPL 2026\",\n  \"venue\": \"Wankhede Stadium\",\n  \"hoursFromNow\": 5\n}"
+              "mode": "graphql",
+              "graphql": {
+                "query": "query Matches {\n  matches {\n    id\n    team1\n    team2\n    scheduledAt\n    venue\n    tournament\n    status\n    winnerTeam\n  }\n}",
+                "variables": ""
+              }
             },
             "url": {
-              "raw": "{{baseUrl}}/dev/create-match",
+              "raw": "{{baseUrl}}/graphql",
               "host": ["{{baseUrl}}"],
-              "path": ["dev", "create-match"]
+              "path": ["graphql"]
             },
-            "description": "Creates a test match scheduled 5 hours from now. Only works in local dev. Change hoursFromNow to any value above 2. Saves matchId, team1, team2 automatically."
+            "description": "Returns all matches across all statuses. Run this right after server start to confirm the mock scheduler synced all 6 scenarios."
           },
           "event": [
             {
@@ -388,23 +390,132 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Success\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
-                  "const match = pm.response.json();",
-                  "pm.test(\"Match returned\", () => pm.expect(match.id).to.be.a('string'));",
-                  "pm.test(\"Status is UPCOMING\", () => pm.expect(match.status).to.equal('UPCOMING'));",
-                  "const action = pm.response.code === 201 ? 'created' : 'refreshed (already existed)';",
-                  "pm.collectionVariables.set('matchId', match.id);",
-                  "pm.collectionVariables.set('team1', match.team1);",
-                  "pm.collectionVariables.set('team2', match.team2);",
-                  "console.log('Match', action + ':', match.team1, 'vs', match.team2, '| id:', match.id);",
-                  "console.log('Scheduled at:', match.scheduledAt);"
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "const matches = json.data.matches;",
+                  "pm.test(\"Has matches\", () => pm.expect(matches.length).to.be.above(0));",
+                  "const byStatus = {};",
+                  "matches.forEach(m => { byStatus[m.status] = (byStatus[m.status] || 0) + 1; });",
+                  "console.log('Match counts by status:', JSON.stringify(byStatus));",
+                  "matches.forEach(m => console.log(' ', m.status, '|', m.team1, 'vs', m.team2, '| winner:', m.winnerTeam || '-'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "2. Get Upcoming Matches",
+          "name": "2. Upcoming Matches",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query Matches($status: MatchStatus) {\n  matches(status: $status) {\n    id\n    team1\n    team2\n    scheduledAt\n    venue\n    tournament\n    status\n  }\n}",
+                "variables": "{\n  \"status\": \"UPCOMING\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Should return 2 upcoming matches: Mumbai Indians vs Chennai Super Kings (~5h from now) and Royal Challengers Bengaluru vs Kolkata Knight Riders (~26h from now)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Has upcoming matches\", () => pm.expect(json.data.matches.length).to.be.above(0));",
+                  "json.data.matches.forEach(m => console.log('UPCOMING:', m.team1, 'vs', m.team2, '|', m.scheduledAt));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Live Matches",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query Matches($status: MatchStatus) {\n  matches(status: $status) {\n    id\n    team1\n    team2\n    scheduledAt\n    venue\n    tournament\n    status\n  }\n}",
+                "variables": "{\n  \"status\": \"LIVE\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Should return 1 live match: Sunrisers Hyderabad vs Rajasthan Royals (started 1 hour ago)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "json.data.matches.forEach(m => console.log('LIVE:', m.team1, 'vs', m.team2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Completed Matches",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query Matches($status: MatchStatus) {\n  matches(status: $status) {\n    id\n    team1\n    team2\n    scheduledAt\n    venue\n    tournament\n    status\n    winnerTeam\n  }\n}",
+                "variables": "{\n  \"status\": \"COMPLETED\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Should return 2 completed matches: Gujarat Titans vs Lucknow Super Giants (GT won) and Delhi Capitals vs Punjab Kings (PBKS won). The sync service resolved these automatically."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "json.data.matches.forEach(m => console.log('COMPLETED:', m.team1, 'vs', m.team2, '| winner:', m.winnerTeam));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "3. Get a Match",
+      "description": "The mock scheduler auto-creates upcoming matches on server startup. Run '1. Get Upcoming Matches' to pick a match for the bet flow — matchId, team1, and team2 are saved automatically.",
+      "item": [
+        {
+          "name": "1. Get Upcoming Matches",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -449,7 +560,7 @@
           ]
         },
         {
-          "name": "3. Get Match Details",
+          "name": "2. Get Match Details",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -1165,6 +1276,50 @@
                   "const json = pm.response.json();",
                   "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
                   "pm.test(\"Returns true\", () => pm.expect(json.data.declineChallenge).to.be.true);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "Dev Utilities",
+      "description": "Local dev only — blocked in production. Use these when you need fresh match data after the scheduler-created matches are already resolved.",
+      "item": [
+        {
+          "name": "1. Create Test Match",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"team1\": \"Mumbai Indians\",\n  \"team2\": \"Chennai Super Kings\",\n  \"tournament\": \"IPL 2026\",\n  \"venue\": \"Wankhede Stadium\",\n  \"hoursFromNow\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/dev/create-match",
+              "host": ["{{baseUrl}}"],
+              "path": ["dev", "create-match"]
+            },
+            "description": "Creates a fresh UPCOMING match. Use this after the scheduler-created mock matches are all resolved and you want to run the bet flow again without resetting the DB. Saves matchId, team1, team2 automatically."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Success\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const match = pm.response.json();",
+                  "pm.test(\"Match returned\", () => pm.expect(match.id).to.be.a('string'));",
+                  "pm.test(\"Status is UPCOMING\", () => pm.expect(match.status).to.equal('UPCOMING'));",
+                  "const action = pm.response.code === 201 ? 'created' : 'refreshed (already existed)';",
+                  "pm.collectionVariables.set('matchId', match.id);",
+                  "pm.collectionVariables.set('team1', match.team1);",
+                  "pm.collectionVariables.set('team2', match.team2);",
+                  "console.log('Match', action + ':', match.team1, 'vs', match.team2, '| id:', match.id);"
                 ]
               }
             }
