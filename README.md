@@ -1,6 +1,20 @@
 # BetMate API
 
-GraphQL API for the BetMate platform — Express v5 + Apollo Server v5 + Prisma v6 + PostgreSQL, deployed on Railway.
+GraphQL API for the BetMate platform — Express v5 + Apollo Server 4 + Prisma v6 + PostgreSQL, deployed on Railway.
+
+> **For the full technical reference** (architecture, data model, service logic, bet lifecycle, cricket sync, error codes): see **[docs/BACKEND.md](docs/BACKEND.md)**
+
+---
+
+## Quick Start (Staging)
+
+The staging API is live at:
+
+```
+https://betmate-api-staging-staging.up.railway.app/graphql
+```
+
+Import the Postman collection (`postman/betmate-api.postman_collection.json`) and point it at the staging URL to test everything without running anything locally.
 
 ---
 
@@ -9,16 +23,18 @@ GraphQL API for the BetMate platform — Express v5 + Apollo Server v5 + Prisma 
 ### Prerequisites (one-time)
 
 - [Node.js](https://nodejs.org) (v20+)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop) (for the local PostgreSQL container)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop) — for the local PostgreSQL container
+- A GitHub PAT with `read:packages` scope — needed to install `@betmate-ap/contracts` from GitHub Packages
 
-### First-time setup after cloning
+### First-time setup
 
 ```bash
-# 1. Install dependencies
-npm install
+# 1. Install dependencies (requires NODE_AUTH_TOKEN in your shell env for GitHub Packages)
+NODE_AUTH_TOKEN=<your_github_pat> npm install
 
-# 2. Create your local env file (credentials already match docker-compose — no edits needed)
+# 2. Create your local env file
 cp .env.example .env
+# The defaults already match docker-compose — no edits needed for local dev
 
 # 3. Start the database container
 docker compose up db -d
@@ -50,6 +66,40 @@ npm run dev
 
 ---
 
+## Environment Variables
+
+Copy `.env.example` to `.env`. For local dev the defaults work out of the box.
+
+| Variable                | Required | Default                 | Description                                                                |
+| ----------------------- | -------- | ----------------------- | -------------------------------------------------------------------------- |
+| `DATABASE_URL`          | Yes      | —                       | PostgreSQL connection string                                               |
+| `JWT_SECRET`            | Yes      | —                       | Secret for signing JWTs (use a strong random value in staging/prod)        |
+| `NODE_AUTH_TOKEN`       | Yes      | —                       | GitHub PAT for installing `@betmate-ap/contracts` from GitHub Packages     |
+| `PORT`                  | No       | `4000`                  | Server port                                                                |
+| `NODE_ENV`              | No       | `development`           | `development` / `staging` / `production`                                   |
+| `CORS_ORIGIN`           | No       | `http://localhost:5173` | Allowed frontend origin                                                    |
+| `COOKIE_SECURE`         | No       | —                       | Set `true` in production to require HTTPS for cookies                      |
+| `COOKIE_SAMESITE`       | No       | —                       | Cookie SameSite policy (`lax`, `strict`, `none`)                           |
+| `SENTRY_DSN`            | No       | —                       | Sentry DSN for error tracking                                              |
+| `CRICKET_API_KEY`       | No\*     | —                       | Cricket data API key. \*Required in staging/production for live match sync |
+| `CRICKET_IPL_SERIES_ID` | No\*     | —                       | IPL series ID from the cricket data API. \*Required in staging/production  |
+
+> In `development`, cricket sync uses a mock provider — `CRICKET_API_KEY` and `CRICKET_IPL_SERIES_ID` are not needed.
+
+---
+
+## Postman Collection
+
+The collection covers the full happy path and key edge cases.
+
+1. Open Postman → **Import** → select `postman/betmate-api.postman_collection.json`
+2. Set the `baseUrl` variable to `http://localhost:4000` (local) or the staging URL
+3. Run requests in order — test scripts automatically capture tokens and IDs between requests
+
+The "Get Upcoming Matches" request always picks the match furthest from now, so it stays clear of the 2-hour challenge window during normal testing.
+
+---
+
 ## Scripts
 
 ### Development
@@ -59,14 +109,6 @@ npm run dev            # Start dev server with hot reload (runs prisma generate 
 npm run dev:setup      # First-time setup: prisma generate + migrate dev
 npm run build          # Compile TypeScript
 npm run start          # Start production server (runs migrations first via prestart)
-```
-
-### Testing
-
-```bash
-npm test               # Run tests
-npm run test:watch     # Watch mode
-npm run test:coverage  # With coverage report
 ```
 
 ### Code Quality
@@ -88,39 +130,15 @@ npm run db:migrate:deploy    # Apply pending migrations (non-interactive, used i
 
 ---
 
-## Environment Variables
-
-Copy `.env.example` to `.env`. For local dev the defaults work out of the box with `docker compose up db -d`.
-
-| Variable       | Required | Description                                                |
-| -------------- | -------- | ---------------------------------------------------------- |
-| `DATABASE_URL` | Yes      | PostgreSQL connection string                               |
-| `JWT_SECRET`   | Yes      | Secret for signing JWT tokens                              |
-| `PORT`         | No       | Server port (default: 4000)                                |
-| `NODE_ENV`     | No       | `development` / `staging` / `production`                   |
-| `CORS_ORIGIN`  | No       | Allowed frontend origin (default: `http://localhost:5173`) |
-| `SENTRY_DSN`   | No       | Sentry error tracking DSN                                  |
-
----
-
 ## Health Endpoints
 
 | Endpoint               | Description                                            |
 | ---------------------- | ------------------------------------------------------ |
 | `GET /health`          | Returns `ok`                                           |
-| `GET /healthz`         | Returns `ok` (Railway probe)                           |
+| `GET /healthz`         | Returns `ok` (Railway liveness probe)                  |
 | `GET /livez`           | Returns `alive`                                        |
 | `GET /readyz`          | Checks database connection — 200 ready / 503 not ready |
-| `GET /health/detailed` | DB status, memory usage, system info                   |
-
----
-
-## Deployment
-
-Railway deploys automatically from `main`. Staging environment:
-`https://betmate-api-staging-staging.up.railway.app`
-
-Required Railway environment variables: `DATABASE_URL`, `JWT_SECRET`, `NODE_AUTH_TOKEN`, `NODE_ENV`, `CORS_ORIGIN`.
+| `GET /health/detailed` | DB latency, memory usage, system info                  |
 
 ---
 
@@ -128,27 +146,36 @@ Required Railway environment variables: `DATABASE_URL`, `JWT_SECRET`, `NODE_AUTH
 
 ```
 src/
-├── index.ts          # Entry point
-├── app.ts            # Express + Apollo setup
-├── graphql/          # Schema loader and resolvers
-├── lib/              # Config, auth, logger, Prisma client
-├── services/         # Business logic (AuthService)
-└── utils/            # Helpers
+├── index.ts              # Entry point
+├── app.ts                # Express + Apollo setup, middleware, health routes
+├── constants/            # Shared constants (bet rules, IPL teams)
+├── graphql/
+│   ├── context.ts        # Context type + requireAuth()
+│   ├── loadSchema.ts     # Loads SDL from @betmate-ap/contracts
+│   └── resolvers/        # Domain resolvers: auth, friend, match, bet
+├── lib/                  # Config, auth, logger, Prisma client, scheduler
+├── services/
+│   ├── auth/             # AuthService, ProfileService
+│   ├── bet/              # ChallengeService, StatsService, ResolutionService
+│   ├── friend/           # FriendService, BlockService
+│   ├── match/            # MatchService
+│   └── cricket/          # CricketSyncService, MockProvider, CricketDataProvider
+└── utils/                # CryptoUtils (hash, JWT)
 
 prisma/
-└── schema.prisma     # Database schema
+└── schema.prisma         # Database schema
 
-postman/              # Postman collection and environment files
+postman/                  # Postman collection
+docs/
+└── BACKEND.md            # Full technical documentation
 ```
 
 ---
 
-## GraphQL API
+## Deployment
 
-Schema is defined in the `betmate-contracts` package (`@betmate-ap/contracts`).
+Railway deploys automatically from `main` to the staging environment. Migrations run automatically via the `prestart` script — no manual steps needed.
 
-**Queries:** `health`, `me`
+Required Railway environment variables: `DATABASE_URL`, `JWT_SECRET`, `NODE_AUTH_TOKEN`, `NODE_ENV`, `CORS_ORIGIN`.
 
-**Mutations:** `signup`, `login`, `logout`, `refreshToken`, `sendVerificationEmail`, `verifyEmail`, `forgotPassword`, `resetPassword`
-
-Import `postman/betmate-api.postman_collection.json` into Postman to test all endpoints with automated token capture.
+See [docs/BACKEND.md → Deployment](docs/BACKEND.md#13-deployment) for the full environment variable reference and Railway configuration details.
