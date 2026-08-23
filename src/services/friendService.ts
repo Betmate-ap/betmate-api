@@ -290,6 +290,14 @@ export class FriendService {
     });
   }
 
+  async getBlockedUsers(currentUserId: string) {
+    const blocks = await this.prisma.friendship.findMany({
+      where: { requesterId: currentUserId, status: FriendshipStatus.BLOCKED },
+      include: { receiver: true },
+    });
+    return blocks.map((b) => b.receiver);
+  }
+
   async getSentFriendRequests(currentUserId: string) {
     return this.prisma.friendship.findMany({
       where: { requesterId: currentUserId, status: FriendshipStatus.PENDING },

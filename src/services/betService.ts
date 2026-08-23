@@ -68,10 +68,13 @@ export class BetService {
       });
     }
 
-    // One bet per pair per match
+    // One active bet per pair per match (ignore terminal statuses)
     const existing = await this.prisma.bet.findFirst({
       where: {
         matchId,
+        status: {
+          notIn: [BetStatus.DECLINED, BetStatus.EXPIRED, BetStatus.CANCELLED],
+        },
         OR: [
           { challengerId, challengeeId },
           { challengerId: challengeeId, challengeeId: challengerId },
@@ -288,6 +291,29 @@ export class BetService {
         winner: true,
       },
     });
+  }
+
+  async cancelChallenge(betId: string, currentUserId: string) {
+    const bet = await this.findBetOrThrow(betId);
+
+    if (bet.challengerId !== currentUserId) {
+      throw new GraphQLError("Only the challenger can cancel a challenge", {
+        extensions: { code: "FORBIDDEN" },
+      });
+    }
+
+    if (bet.status !== BetStatus.PENDING) {
+      throw new GraphQLError("Only pending challenges can be cancelled", {
+        extensions: { code: "INVALID_STATUS" },
+      });
+    }
+
+    await this.prisma.bet.update({
+      where: { id: betId },
+      data: { status: BetStatus.CANCELLED },
+    });
+
+    return true;
   }
 
   async getMyBets(currentUserId: string, status?: BetStatus) {
