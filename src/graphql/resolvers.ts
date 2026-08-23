@@ -1,6 +1,12 @@
 import { PrismaClient, BetStatus, MatchStatus } from "@prisma/client";
 import { GraphQLError } from "graphql";
-import { AuthService, SignupInput, LoginInput } from "../services/authService";
+import {
+  AuthService,
+  SignupInput,
+  LoginInput,
+  UpdateProfileInput,
+  ChangePasswordInput,
+} from "../services/authService";
 import { FriendService } from "../services/friendService";
 import { MatchService } from "../services/matchService";
 import { BetService } from "../services/betService";
@@ -46,6 +52,11 @@ export const resolvers = {
     sentFriendRequests: async (_: unknown, __: unknown, ctx: Context) => {
       const userId = requireAuth(ctx);
       return new FriendService(ctx.prisma).getSentFriendRequests(userId);
+    },
+
+    blockedUsers: async (_: unknown, __: unknown, ctx: Context) => {
+      const userId = requireAuth(ctx);
+      return new FriendService(ctx.prisma).getBlockedUsers(userId);
     },
 
     searchUsers: async (
@@ -240,6 +251,24 @@ export const resolvers = {
       return new FriendService(ctx.prisma).removeBetmate(currentUserId, userId);
     },
 
+    updateProfile: async (
+      _: unknown,
+      { input }: { input: UpdateProfileInput },
+      ctx: Context,
+    ) => {
+      const userId = requireAuth(ctx);
+      return new AuthService(ctx.prisma).updateProfile(userId, input);
+    },
+
+    changePassword: async (
+      _: unknown,
+      { input }: { input: ChangePasswordInput },
+      ctx: Context,
+    ) => {
+      const userId = requireAuth(ctx);
+      return new AuthService(ctx.prisma).changePassword(userId, input);
+    },
+
     blockUser: async (
       _: unknown,
       { userId }: { userId: string },
@@ -281,6 +310,15 @@ export const resolvers = {
     ) => {
       const currentUserId = requireAuth(ctx);
       return new BetService(ctx.prisma).acceptChallenge(betId, currentUserId);
+    },
+
+    cancelChallenge: async (
+      _: unknown,
+      { betId }: { betId: string },
+      ctx: Context,
+    ) => {
+      const userId = requireAuth(ctx);
+      return new BetService(ctx.prisma).cancelChallenge(betId, userId);
     },
 
     declineChallenge: async (

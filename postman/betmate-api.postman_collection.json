@@ -1285,6 +1285,223 @@
     },
 
     {
+      "name": "7. Profile & Account",
+      "description": "Profile update, password change, and blocked users list. All run as Challenger by default.",
+      "item": [
+        {
+          "name": "1. Update Profile",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation UpdateProfile($input: UpdateProfileInput!) {\n  updateProfile(input: $input) {\n    id\n    username\n    firstName\n    lastName\n    email\n    updatedAt\n  }\n}",
+                "variables": "{\n  \"input\": {\n    \"firstName\": \"UpdatedFirst\",\n    \"lastName\": \"UpdatedLast\"\n  }\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Update firstName, lastName, or username. All fields are optional — only provided fields are changed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Name updated\", () => pm.expect(json.data.updateProfile.firstName).to.equal('UpdatedFirst'));",
+                  "console.log('Updated:', json.data.updateProfile.username, '|', json.data.updateProfile.firstName, json.data.updateProfile.lastName);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Change Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation ChangePassword($input: ChangePasswordInput!) {\n  changePassword(input: $input)\n}",
+                "variables": "{\n  \"input\": {\n    \"currentPassword\": \"Test123!\",\n    \"newPassword\": \"NewTest456!\"\n  }\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Changes the password for the current user. Invalidates all existing refresh tokens (forces re-login on other devices). Wrong current password returns INVALID_CREDENTIALS."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Returns true\", () => pm.expect(json.data.changePassword).to.be.true);",
+                  "console.log('Password changed. Re-login required on other devices.');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Block a User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation BlockUser($userId: ID!) {\n  blockUser(userId: $userId)\n}",
+                "variables": "{\n  \"userId\": \"{{challengeeId}}\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Challenger blocks the Challengee. Blocked users are hidden from search results and cannot send friend requests. If they were Betmates, the relationship is removed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Returns true\", () => pm.expect(json.data.blockUser).to.be.true);",
+                  "console.log('User blocked. They are now hidden from search.');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Unblock a User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation UnblockUser($userId: ID!) {\n  unblockUser(userId: $userId)\n}",
+                "variables": "{\n  \"userId\": \"{{challengeeId}}\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Removes the block. They will reappear in search but are no longer Betmates — they'd need to send a new friend request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Returns true\", () => pm.expect(json.data.unblockUser).to.be.true);",
+                  "console.log('User unblocked.');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. View Blocked Users",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query BlockedUsers {\n  blockedUsers {\n    id\n    username\n    firstName\n    lastName\n  }\n}",
+                "variables": ""
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Lists all users blocked by the current user. Only shows users YOU blocked — not users who blocked you."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Returns array\", () => pm.expect(json.data.blockedUsers).to.be.an('array'));",
+                  "console.log('Blocked users:', json.data.blockedUsers.length);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Cancel Challenge (as Challenger)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation CancelChallenge($betId: ID!) {\n  cancelChallenge(betId: $betId)\n}",
+                "variables": "{\n  \"betId\": \"{{betId}}\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Challenger withdraws a PENDING challenge before the challengee responds. Run Send Challenge first to get a PENDING bet, then run this instead of Accept/Decline. Only the challenger can cancel — challengee gets FORBIDDEN."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"No errors\", () => pm.expect(json.errors).to.be.undefined);",
+                  "pm.test(\"Returns true\", () => pm.expect(json.data.cancelChallenge).to.be.true);",
+                  "console.log('Challenge cancelled by challenger.');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
       "name": "Dev Utilities",
       "description": "Local dev only — blocked in production. Use these when you need fresh match data after the scheduler-created matches are already resolved.",
       "item": [
