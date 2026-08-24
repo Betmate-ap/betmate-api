@@ -58,10 +58,14 @@ export async function createApp() {
   );
 
   // CORS
+  const isDev = config.NODE_ENV === "development";
   const devOrigins = ["http://localhost:5173", "http://localhost:4000"];
+  const allowedOrigins = isDev
+    ? devOrigins
+    : config.CORS_ORIGIN.split(",").map((o) => o.trim());
   app.use(
     cors({
-      origin: isProd ? config.CORS_ORIGIN : devOrigins,
+      origin: allowedOrigins,
       credentials: true,
     }),
   );
